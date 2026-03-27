@@ -13,9 +13,8 @@ router.post('/', upload.single('photo'), async (req, res) => {
       return res.status(400).json({ error: 'Photo and description are required' });
     }
 
-    // Build the landscaping prompt — this is the intelligence hardcoded into George
     const prompt = `
-      You are a professional garden designer. 
+      You are a professional garden designer.
       Create a photorealistic image of a transformed garden based on this brief: "${description}".
       The garden should look achievable for a UK residential property.
       Show clean landscaping with natural materials, neat lawn edges, and realistic planting.
@@ -31,11 +30,10 @@ router.post('/', upload.single('photo'), async (req, res) => {
     });
 
     const imageUrl = response.data[0].url;
-
     res.json({ imageUrl });
 
   } catch (error) {
-    console.error('generateDesign error:', error);
+    console.error('generateDesign error:', error.message);
     res.status(500).json({ error: error.message });
   }
 });

@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const OpenAI = require('openai');
+const { OpenAI } = require('openai');
 const upload = require('../middleware/upload');
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -12,6 +12,10 @@ router.post('/', upload.single('before'), async (req, res) => {
     if (!afterImageUrl || !req.file) {
       return res.status(400).json({ error: 'Before photo and after image URL are required' });
     }
+
+    // Convert buffer to base64
+    const base64Image = req.file.buffer.toString('base64');
+    const mimeType = req.file.mimetype;
 
     const response = await openai.chat.completions.create({
       model: 'gpt-4o',
@@ -33,6 +37,12 @@ router.post('/', upload.single('before'), async (req, res) => {
             },
             {
               type: 'image_url',
+              image_url: {
+                url: `data:${mimeType};base64,${base64Image}`
+              }
+            },
+            {
+              type: 'image_url',
               image_url: { url: afterImageUrl }
             }
           ]
@@ -42,15 +52,13 @@ router.post('/', upload.single('before'), async (req, res) => {
     });
 
     const content = response.choices[0].message.content;
-
-    // Strip any markdown formatting just in case
     const cleaned = content.replace(/```json|```/g, '').trim();
     const elements = JSON.parse(cleaned);
 
     res.json({ elements });
 
   } catch (error) {
-    console.error('extractElements error:', error);
+    console.error('extractElements error:', error.message);
     res.status(500).json({ error: error.message });
   }
 });
