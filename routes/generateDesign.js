@@ -15,7 +15,11 @@ router.post('/', upload.single('photo'), async (req, res) => {
 
     // Step 1: Send the photo to GPT-4o Vision to extract precise spatial layout
     const base64Image = req.file.buffer.toString('base64');
-    const mimeType = req.file.mimetype;
+
+    // Normalise MIME type — Flutter sometimes sends application/octet-stream
+    // or omits content-type entirely. Default to image/jpeg which GPT-4o accepts.
+    const rawMime = req.file.mimetype || '';
+    const mimeType = rawMime.startsWith('image/') ? rawMime : 'image/jpeg';
 
     const analysisResponse = await openai.chat.completions.create({
       model: 'gpt-4o',
