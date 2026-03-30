@@ -1,11 +1,28 @@
+const fs = require('fs');
+const path = require('path');
 const express = require('express');
 const router = express.Router();
-const { OpenAI } = require('openai');
-const upload = require('../middleware/upload');
+const multer = require('multer');
+const sharp = require('sharp');
+const OpenAI = require('openai');
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: '/tmp',
+    filename: (req, file, cb) => {
+      cb(null, `upload-${Date.now()}${path.extname(file.originalname) || '.jpg'}`);
+    }
+  }),
+  limits: {
+    fileSize: 8 * 1024 * 1024
+  }
+});
 
 router.post('/', upload.single('photo'), async (req, res) => {
+  let resizedPath;
+
   try {
     const { description } = req.body;
 
@@ -13,33 +30,36 @@ router.post('/', upload.single('photo'), async (req, res) => {
       return res.status(400).json({ error: 'Photo and description are required' });
     }
 
-    const base64Image = req.file.buffer.toString('base64');
-    const mimeType = req.file.mimetype;
+    resizedPath = `/tmp/resized-${Date.now()}.jpg`;
 
-    const response = await openai.images.edit({
-  model: 'gpt-image-1',
-  image: Buffer.from(base64Image, 'base64'),
-  prompt: `Transform this garden image by doing ONLY this: "${description}".
-  
-  Rules:
-  - Do NOT change the fence, walls, patio, lawn, shed, or any existing features unless the customer specifically asked for them to change
-  - Do NOT add furniture, decorations, or plants that were not requested
-  - Do NOT change the sky, lighting, or background
-  - Do NOT alter the perspective or camera angle
-  - ONLY make the single change the customer described
-  - Everything else must remain exactly as it appears in the original photo`,
-  n: 1,
-  size: '1024x1024',
-});
+    await sharp(req.file.path)
+      .rotate()
+      .resize(768, 768, { fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: 80 })
+      .toFile(resizedPath);
 
-    const imageBase64 = response.data[0].b64_json;
-    const imageUrl = `data:image/png;base64,${imageBase64}`;
+    const imageFile = await OpenAI.toFile(
+      fs.createReadStream(resizedPath),
+      'garden.jpg',
+      { type: 'image/jpeg' }
+    );
 
-    res.json({ imageUrl });
+    const result = await client.images.edit({
+      model: 'gpt-image-1',
+      image: imageFile,
+      prompt: `Edit this garden photo based on this request: "${description}". Only make requested changes. Keep everything else the same.`,
+      size: '1024x1024'
+    });
 
+    res.json({
+      imageUrl: `data:image/png;base64,${result.data[0].b64_json}`
+    });
   } catch (error) {
-    console.error('generateDesign error:', error.message);
-    res.status(500).json({ error: error.message });
+    console.error(error);
+    res.status(500).json({ error: error.message || 'Failed' });
+  } finally {
+    if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+    if (resizedPath && fs.existsSync(resizedPath)) fs.unlinkSync(resizedPath);
   }
 });
 
