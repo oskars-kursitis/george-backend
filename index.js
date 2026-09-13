@@ -6,7 +6,7 @@ dotenv.config();
 
 const { requireApiKey, rateLimit } = require('./middleware/security');
 const imageStore = require('./lib/imageStore');
-const { listPresets } = require('./config/presets');
+const { listPresets, SIZE_BANDS, LOCATIONS } = require('./config/presets');
 const { keyProblem } = require('./lib/openai');
 const { MATERIALS } = require('./config/materials');
 
@@ -69,7 +69,15 @@ app.get('/images/:id', (req, res) => {
   res.send(image.buffer);
 });
 
-app.get('/presets', (req, res) => res.json({ presets: listPresets() }));
+app.get('/presets', (req, res) =>
+  res.json({
+    presets: listPresets(),
+    // Sent so the app can show a live price range as the size slider moves,
+    // without duplicating the thresholds in Dart.
+    sizeBands: SIZE_BANDS,
+    locations: Object.entries(LOCATIONS).map(([key, v]) => ({ key, label: v.label })),
+  })
+);
 
 // ---- Authenticated pipeline ------------------------------------------------
 

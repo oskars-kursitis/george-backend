@@ -19,7 +19,7 @@ const { buildPrompt } = require('../config/presets');
  */
 router.post('/', async (req, res, next) => {
   try {
-    const { photoId, presetId, brief, measurements } = req.body;
+    const { photoId, presetId, brief, measurements, location = 'back' } = req.body;
 
     if (!photoId) return res.status(400).json({ error: 'photoId is required (from /concepts).' });
     if (!presetId) return res.status(400).json({ error: 'presetId is required.' });
@@ -32,7 +32,19 @@ router.post('/', async (req, res, next) => {
     const original = imageStore.read(photoId);
     if (!original) return res.status(404).json({ error: 'That photo has expired. Upload it again.' });
 
-    const prompt = buildPrompt({ presetId, brief, measurements });
+    // By stage two the area is measured, not estimated, so the scale language
+    // is anchored to a real number.
+    const measuredArea = measurements
+      .filter((m) => m.measure === 'area')
+      .reduce((sum, m) => sum + Number(m.lengthM || 0) * Number(m.widthM || 0), 0);
+
+    const prompt = buildPrompt({
+      presetId,
+      brief,
+      measurements,
+      location,
+      approxAreaM2: measuredArea > 0 ? measuredArea : undefined,
+    });
     const imageFile = await OpenAI.toFile(original.buffer, 'garden.jpg', { type: original.contentType });
 
     const result = await getClient().images.edit({

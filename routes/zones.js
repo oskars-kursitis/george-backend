@@ -55,7 +55,7 @@ const ZONES_SCHEMA = {
 
 router.post('/', async (req, res, next) => {
   try {
-    const { photoId, presetId, brief } = req.body;
+    const { photoId, presetId, brief, location = 'back' } = req.body;
 
     if (!photoId) return res.status(400).json({ error: 'photoId is required (from /concepts).' });
     if (!presetId) return res.status(400).json({ error: 'presetId is required.' });
@@ -71,11 +71,12 @@ router.post('/', async (req, res, next) => {
       .jpeg({ quality: 78 })
       .toBuffer();
 
-    const preset = resolvePreset(presetId);
+    const preset = resolvePreset(presetId, { location });
     const candidateRoles = preset.zones.map((z) => z.role);
 
     const instructions = `You are a UK landscaping contractor looking at a photo of a garden before work starts.
 
+This is a ${preset.place.label.toUpperCase()}.
 The chosen design is "${preset.style.label}" at "${preset.tier.label}" specification.
 That design normally involves these areas of work: ${candidateRoles.join(', ')}.
 ${brief ? `The customer has asked for: "${String(brief).slice(0, 800)}".` : ''}

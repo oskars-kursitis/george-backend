@@ -23,13 +23,13 @@ const CONCEPT_COUNT = 3;
 
 router.post('/', upload.single('photo'), async (req, res, next) => {
   try {
-    const { presetId, brief } = req.body;
+    const { presetId, brief, location = 'back', approxAreaM2 } = req.body;
 
     if (!req.file) return res.status(400).json({ error: 'A photo of the garden is required.' });
     if (!presetId) return res.status(400).json({ error: 'presetId is required.' });
 
     // Throws with the valid list if the id is wrong — cheaper than an API round trip.
-    const preset = resolvePreset(presetId);
+    const preset = resolvePreset(presetId, { location });
 
     // Normalise orientation and size before it goes anywhere near the model.
     const normalised = await sharp(req.file.buffer)
@@ -40,7 +40,7 @@ router.post('/', upload.single('photo'), async (req, res, next) => {
 
     const photoId = imageStore.save(normalised, 'image/jpeg');
 
-    const prompt = buildPrompt({ presetId, brief });
+    const prompt = buildPrompt({ presetId, brief, location, approxAreaM2: Number(approxAreaM2) });
     const imageFile = await OpenAI.toFile(normalised, 'garden.jpg', { type: 'image/jpeg' });
 
     const result = await getClient().images.edit({
@@ -68,6 +68,7 @@ router.post('/', upload.single('photo'), async (req, res, next) => {
       photoId,
       photoUrl: imageStore.publicUrl(req, photoId),
       presetId,
+      location,
       preset: {
         styleLabel: preset.style.label,
         tierLabel: preset.tier.label,

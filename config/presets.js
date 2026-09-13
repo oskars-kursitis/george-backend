@@ -53,6 +53,32 @@ const ROLE_LABEL = {
   [ROLES.FEATURE]: 'Feature planting',
 };
 
+/**
+ * Front or back. This changes more than the words in the prompt.
+ *
+ * A front garden is for arrival, kerb appeal and access — it does not get a
+ * dining patio or a deck. The first real test of this put a six-seater table
+ * and a parasol in a 4x5m front garden, because nothing in the system knew
+ * front gardens existed.
+ */
+const LOCATIONS = {
+  back: {
+    label: 'Back garden',
+    allowedRoles: null, // no restriction
+    prompt: 'This is a private rear garden, enclosed and not overlooked from the street.',
+  },
+  front: {
+    label: 'Front garden',
+    allowedRoles: ['lawn', 'path', 'beds', 'edging', 'screening', 'feature'],
+    prompt:
+      'This is a FRONT garden, open to the street and the pavement. It is for arrival and kerb appeal, ' +
+      'not for sitting out. Absolutely no outdoor dining furniture, no table and chairs, no parasol and ' +
+      'no sofa or lounge seating — those belong in a back garden and would look absurd here. ' +
+      'Focus on the approach to the front door, a clean path, tidy planting, a defined boundary, ' +
+      'and discreet bin storage if there is room.',
+  },
+};
+
 const STYLES = {
   low_maintenance: {
     label: 'Low maintenance',
@@ -178,6 +204,49 @@ const BASE_PROMPT =
   'Show the garden in use: outdoor furniture, a set table, signs of life. No people, no text, no watermarks. ' +
   'Planting shown at approximately two years of growth.';
 
+/**
+ * Fixed costs do not scale down. The same skip, the same minimum aggregate
+ * load, the same day of access and set-up land on a 20m2 garden as on a 100m2
+ * one — so the rate per square metre climbs steeply as jobs get small.
+ *
+ * Quoting a small job at large-job rates under-quotes it, which is the exact
+ * failure this build exists to prevent. These multipliers adjust the tier's
+ * headline band for the size of the actual job.
+ */
+const SIZE_BANDS = [
+  { underM2: 15, multiplier: 1.9, label: 'Very small job — fixed costs dominate' },
+  { underM2: 30, multiplier: 1.6, label: 'Small job' },
+  { underM2: 60, multiplier: 1.25, label: 'Average domestic garden' },
+  { underM2: 120, multiplier: 1.0, label: 'Large garden' },
+  { underM2: null, multiplier: 0.9, label: 'Very large — economies of scale' },
+];
+
+function smallJobMultiplier(areaM2) {
+  if (!Number.isFinite(areaM2) || areaM2 <= 0) return 1;
+  const band = SIZE_BANDS.find((b) => b.underM2 === null || areaM2 < b.underM2);
+  return band.multiplier;
+}
+
+/** The tier's rate band adjusted for job size, plus the resulting total. */
+function bandForArea(tierKey, areaM2) {
+  const tier = TIERS[tierKey];
+  if (!tier) return null;
+
+  const [low, high] = tier.pricePerM2;
+  const multiplier = smallJobMultiplier(areaM2);
+  const perM2 = [Math.round(low * multiplier), Math.round(high * multiplier)];
+
+  return {
+    perM2,
+    basePerM2: tier.pricePerM2,
+    multiplier,
+    total:
+      Number.isFinite(areaM2) && areaM2 > 0
+        ? [Math.round(perM2[0] * areaM2), Math.round(perM2[1] * areaM2)]
+        : null,
+  };
+}
+
 function presetId(styleKey, tierKey) {
   return `${styleKey}:${tierKey}`;
 }
@@ -188,7 +257,7 @@ function parsePresetId(id) {
 }
 
 /** Resolve a preset id into everything the rest of the pipeline needs. */
-function resolvePreset(id) {
+function resolvePreset(id, { location = 'back' } = {}) {
   const { styleKey, tierKey } = parsePresetId(id);
   const style = STYLES[styleKey];
   const tier = TIERS[tierKey];
@@ -204,14 +273,19 @@ function resolvePreset(id) {
     throw error;
   }
 
-  const zones = style.roles.map((role) => ({
+  const place = LOCATIONS[location] || LOCATIONS.back;
+  const roles = place.allowedRoles
+    ? style.roles.filter((role) => place.allowedRoles.includes(role))
+    : style.roles;
+
+  const zones = roles.map((role) => ({
     role,
     label: ROLE_LABEL[role],
     measure: ROLE_MEASURE[role],
     materialKey: tier.materials[role],
   }));
 
-  return { id, styleKey, tierKey, style, tier, zones };
+  return { id, styleKey, tierKey, style, tier, zones, location, place };
 }
 
 /** Flat list for the app's picker. */
@@ -229,6 +303,10 @@ function listPresets() {
         tierBlurb: tier.blurb,
         pricePerM2: tier.pricePerM2,
         roles: style.roles,
+        rolesByLocation: {
+          back: style.roles,
+          front: style.roles.filter((r) => LOCATIONS.front.allowedRoles.includes(r)),
+        },
       });
     }
   }
@@ -240,9 +318,20 @@ function listPresets() {
  * `measurements` is optional: stage 1 (concepts) has none, stage 2 (spec render)
  * passes the confirmed dimensions so the geometry in the image matches the quote.
  */
-function buildPrompt({ presetId: id, brief, measurements }) {
-  const { style, tier } = resolvePreset(id);
-  const parts = [BASE_PROMPT, `Design direction: ${style.prompt}.`, `Specification: ${tier.prompt}.`];
+function buildPrompt({ presetId: id, brief, measurements, location = 'back', approxAreaM2 }) {
+  const { style, tier, place } = resolvePreset(id, { location });
+  const parts = [BASE_PROMPT, place.prompt, `Design direction: ${style.prompt}.`, `Specification: ${tier.prompt}.`];
+
+  // Stage one has no measurements, so without this the model invents generic
+  // proportions and cheerfully fits a six-seater dining set into 20m2.
+  if (Number.isFinite(approxAreaM2) && approxAreaM2 > 0) {
+    parts.push(
+      `IMPORTANT — SCALE: the whole garden is only about ${Math.round(approxAreaM2)} square metres. ` +
+        `Keep the proportions truthful to that size. Do not enlarge the space, do not extend it into the ` +
+        `distance, and do not include any feature or furniture that would not physically fit in ` +
+        `${Math.round(approxAreaM2)} square metres. A small garden should look small.`
+    );
+  }
 
   if (brief && brief.trim()) {
     parts.push(`Client's specific requirements, which take priority: "${brief.trim()}".`);
@@ -267,6 +356,10 @@ function buildPrompt({ presetId: id, brief, measurements }) {
 module.exports = {
   ROLES,
   MEASURE,
+  LOCATIONS,
+  SIZE_BANDS,
+  bandForArea,
+  smallJobMultiplier,
   ROLE_LABEL,
   ROLE_MEASURE,
   STYLES,
