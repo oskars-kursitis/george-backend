@@ -80,6 +80,30 @@ const LOCATIONS = {
 };
 
 const STYLES = {
+  /**
+   * No style — the contractor has described the job himself.
+   *
+   * The styles are a shortcut for when there is no brief. Forcing a choice on
+   * someone who has already written what he wants is backwards, so this entry
+   * stands in: it contributes no design language of its own and offers every
+   * area of work, leaving the zones step to decide what the garden actually
+   * contains.
+   */
+  custom: {
+    label: 'From your brief',
+    blurb: 'Use what you have written, with no preset design on top.',
+    prompt: '',
+    requiresBrief: true,
+    roles: [
+      ROLES.LAWN,
+      ROLES.PATIO,
+      ROLES.PATH,
+      ROLES.BEDS,
+      ROLES.SCREENING,
+      ROLES.DECK,
+      ROLES.EDGING,
+    ],
+  },
   low_maintenance: {
     label: 'Low maintenance',
     blurb: 'Hard landscaping led, minimal upkeep, generous gravel and paving.',
@@ -299,6 +323,8 @@ function listPresets() {
         tierKey,
         styleLabel: style.label,
         styleBlurb: style.blurb,
+        isCustom: styleKey === 'custom',
+        requiresBrief: Boolean(style.requiresBrief),
         tierLabel: tier.label,
         tierBlurb: tier.blurb,
         pricePerM2: tier.pricePerM2,
@@ -320,7 +346,12 @@ function listPresets() {
  */
 function buildPrompt({ presetId: id, brief, measurements, location = 'back', approxAreaM2 }) {
   const { style, tier, place } = resolvePreset(id, { location });
-  const parts = [BASE_PROMPT, place.prompt, `Design direction: ${style.prompt}.`, `Specification: ${tier.prompt}.`];
+  const parts = [BASE_PROMPT, place.prompt];
+  // A custom preset carries no design language of its own — the brief is the
+  // design direction, so adding an empty "Design direction:." line would only
+  // dilute it.
+  if (style.prompt) parts.push(`Design direction: ${style.prompt}.`);
+  parts.push(`Specification: ${tier.prompt}.`);
 
   // Stage one has no measurements, so without this the model invents generic
   // proportions and cheerfully fits a six-seater dining set into 20m2.
