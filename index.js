@@ -14,6 +14,18 @@ const PORT = process.env.PORT || 3000;
 
 app.disable('x-powered-by');
 
+// One line per request. Invaluable when driving the app from a phone and the
+// only other signal is a spinner.
+app.use((req, res, next) => {
+  const startedAt = Date.now();
+  res.on('finish', () => {
+    const ms = Date.now() - startedAt;
+    const flag = res.statusCode >= 400 ? '!' : ' ';
+    console.log(`${flag} ${res.statusCode} ${req.method.padEnd(4)} ${req.path} ${ms}ms`);
+  });
+  next();
+});
+
 // Body limits sized for JSON payloads only. Images travel as ids, never inline —
 // the old flow posted a multi-megabyte data URI into a 100kb default limit.
 app.use(express.json({ limit: '1mb' }));
