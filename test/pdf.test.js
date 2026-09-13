@@ -28,7 +28,14 @@ function sampleQuote() {
   return buildQuote({
     presetId: 'family:standard',
     zones: [z('lawn', { lengthM: 8, widthM: 5 }), z('patio', { lengthM: 5, widthM: 4 })],
-    labour: { hours: 110, rate: 28 },
+    labourLines: [
+      { description: 'Me', hours: 70, rate: 38 },
+      { description: 'Labourer', hours: 70, rate: 15 },
+    ],
+    hireLines: [
+      { description: '8-yard skip', qty: 2, unit: 'each', rate: 280 },
+      { description: 'Mini digger', qty: 3, unit: 'days', rate: 95 },
+    ],
     options: { marginPercent: 20, vatRegistered: true, vatRate: 20 },
   });
 }
@@ -93,6 +100,20 @@ test('prints the liability shield: attribution, dimensions, exclusions, expiry',
   assert.match(text, /confirmed as accurate by O. Kursitis/);
 });
 
+test('every labour and hire line is itemised for the customer', async () => {
+  const res = await postPdf({ quote: sampleQuote(), company: { name: 'K&S Landscapes Ltd' } });
+  const text = pdfText(Buffer.from(await res.arrayBuffer()));
+
+  // Two men and two hire items, each on its own line — not one opaque "labour"
+  // figure the customer cannot interrogate.
+  assert.match(text, /Me .*70 hrs/);
+  assert.match(text, /Labourer .*70 hrs/);
+  assert.match(text, /8-yard skip .*2 each/);
+  assert.match(text, /Mini digger .*3 days/);
+  assert.match(text, /Labour total/);
+  assert.match(text, /Plant and hire total/);
+});
+
 test('prices are shown in pounds', async () => {
   const res = await postPdf({ quote: sampleQuote(), company: { name: 'Test' } });
   const text = pdfText(Buffer.from(await res.arrayBuffer()));
@@ -105,7 +126,7 @@ test('VAT-registered and not are rendered differently', async () => {
   const noVat = buildQuote({
     presetId: 'family:value',
     zones: [z('lawn', { lengthM: 8, widthM: 5 })],
-    labour: { hours: 20, rate: 25 },
+    labourLines: [{ description: 'Me', hours: 20, rate: 25 }],
     options: { vatRegistered: false },
   });
 
@@ -136,7 +157,7 @@ test('a long materials list paginates instead of running off the page', async ()
       z('screening', { runM: 40 }),
       z('beds', { lengthM: 12, widthM: 2 }),
     ],
-    labour: { hours: 220, rate: 32 },
+    labourLines: [{ description: 'Me', hours: 220, rate: 32 }],
     options: { marginPercent: 25, vatRegistered: true },
   });
 

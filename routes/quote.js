@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 const { buildQuote, QuoteError } = require('../lib/calculator');
+const { bandForArea } = require('../config/presets');
 
 /**
  * POST /quote
@@ -16,26 +17,34 @@ const { buildQuote, QuoteError } = require('../lib/calculator');
  */
 router.post('/', (req, res, next) => {
   try {
-    const { presetId, zones, labour, options } = req.body;
+    const { presetId, zones, labourLines, hireLines, options } = req.body;
 
     if (!presetId) return res.status(400).json({ error: 'presetId is required.' });
 
-    const quote = buildQuote({ presetId, zones, labour, options });
+    const quote = buildQuote({ presetId, zones, labourLines, hireLines, options });
 
-    // Surface a mismatch between the tier's promised band and the actual number
-    // rather than letting the contractor discover it in front of the customer.
-    const [bandLow, bandHigh] = quote.preset.pricePerM2;
+    // Compare against the band for THIS job's size, not the headline rate. A
+    // 22m² job carries the same skip and the same day of set-up as a 100m² one,
+    // so its £/m² is far higher and the flat band would under-warn badly.
+    const band = bandForArea(quote.presetId.split(':')[1], quote.totals.measuredAreaM2);
     const implied = quote.totals.impliedPerM2;
+
     let bandWarning = null;
-    if (implied != null) {
-      if (implied < bandLow) {
-        bandWarning = `This works out at £${implied}/m², below the £${bandLow}-${bandHigh}/m² typical for ${quote.preset.tierLabel}. Check the labour hours before sending.`;
-      } else if (implied > bandHigh) {
-        bandWarning = `This works out at £${implied}/m², above the £${bandLow}-${bandHigh}/m² typical for ${quote.preset.tierLabel}.`;
+    if (band && implied != null) {
+      const [low, high] = band.perM2;
+      if (implied < low) {
+        bandWarning =
+          `£${implied}/m² is below the £${low}-${high}/m² typical for ${quote.preset.tierLabel} ` +
+          `work on a ${Math.round(quote.totals.measuredAreaM2)}m² job. Check your hours, and whether ` +
+          `skip hire or plant is missing.`;
+      } else if (implied > high) {
+        bandWarning =
+          `£${implied}/m² is above the £${low}-${high}/m² typical for ${quote.preset.tierLabel} ` +
+          `work on a job this size.`;
       }
     }
 
-    res.json({ ...quote, bandWarning });
+    res.json({ ...quote, bandWarning, sizeBand: band });
   } catch (error) {
     if (error instanceof QuoteError) {
       return res.status(400).json({ error: error.message, field: error.field });

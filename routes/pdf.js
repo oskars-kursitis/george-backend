@@ -173,7 +173,21 @@ router.post('/', (req, res, next) => {
         { bold }
       );
 
-    totalRow(`Labour — ${t.labourHours} hours at ${money(t.labourRate)} per hour`, money(t.labourTotal));
+    // Each labour line itemised — the customer sees two men for a week, not an
+    // opaque "labour" figure.
+    for (const line of quote.labour || []) {
+      totalRow(`${line.description} — ${line.hours} hrs at ${money(line.rate)}/hr`, money(line.lineTotal));
+    }
+    if ((quote.labour || []).length > 1) totalRow('Labour total', money(t.labourTotal), true);
+
+    for (const line of quote.hire || []) {
+      totalRow(
+        `${line.description} — ${line.qty} ${line.unit} at ${money(line.rate)}`,
+        money(line.lineTotal)
+      );
+    }
+    if ((quote.hire || []).length > 1) totalRow('Plant and hire total', money(t.hireTotal), true);
+
     totalRow('Materials', money(t.materialsTotal));
     rule(doc);
     totalRow('Subtotal', money(t.costSubtotal));

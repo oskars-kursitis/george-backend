@@ -61,7 +61,7 @@ test('identical materials in two zones aggregate into one line', () => {
       zoneFor('family:standard', 'lawn', { lengthM: 10, widthM: 4, label: 'Back lawn' }),
       { ...zoneFor('family:standard', 'lawn', {}), lengthM: 5, widthM: 2, label: 'Front lawn' },
     ],
-    labour: { hours: 0, rate: 0 },
+    labourLines: [],
   });
 
   const turf = quote.items.filter((i) => i.materialKey === 'turf_premium');
@@ -74,7 +74,7 @@ test('margin then VAT are applied in the right order', () => {
   const quote = buildQuote({
     presetId: 'family:value',
     zones: [zoneFor('family:value', 'lawn', { lengthM: 10, widthM: 4 })],
-    labour: { hours: 10, rate: 25 },
+    labourLines: [{ description: 'Me', hours: 10, rate: 25 }],
     options: { marginPercent: 20, vatRegistered: true, vatRate: 20 },
   });
 
@@ -91,36 +91,108 @@ test('a non-VAT-registered sole trader gets no VAT line', () => {
   const quote = buildQuote({
     presetId: 'family:value',
     zones: [zoneFor('family:value', 'lawn', { lengthM: 5, widthM: 4 })],
-    labour: { hours: 4, rate: 25 },
+    labourLines: [{ description: 'Me', hours: 4, rate: 25 }],
     options: { vatRegistered: false },
   });
   assert.equal(quote.totals.vatAmount, 0);
   assert.equal(quote.totals.grandTotal, quote.totals.netTotal);
 });
 
-test('cheapest price mode beats a pinned merchant, and supplier prices win when lower', () => {
+test('the contractor price book overrides the seed estimate', () => {
   const zones = [zoneFor('family:value', 'lawn', { lengthM: 10, widthM: 4 })];
 
-  const cheapest = buildQuote({ presetId: 'family:value', zones, labour: { hours: 0, rate: 0 } });
-  const turfCheapest = cheapest.items.find((i) => i.materialKey === 'turf_standard');
-  assert.equal(turfCheapest.priceSource, 'wickes'); // 4.99 < 5.25
+  const seeded = buildQuote({ presetId: 'family:value', zones, labourLines: [] });
+  const turfSeeded = seeded.items.find((i) => i.materialKey === 'turf_standard');
+  assert.equal(turfSeeded.isEstimate, true, 'with no price book, turf falls back to a seed');
+  assert.equal(turfSeeded.unitPrice, 4.99);
 
-  const withSupplier = buildQuote({
+  const owned = buildQuote({
     presetId: 'family:value',
     zones,
-    labour: { hours: 0, rate: 0 },
-    options: { supplierPrices: { turf_standard: 3.8 } },
+    labourLines: [],
+    options: { priceBook: { turf_standard: 3.8 } },
   });
-  const turfSupplier = withSupplier.items.find((i) => i.materialKey === 'turf_standard');
-  assert.equal(turfSupplier.priceSource, 'supplier');
-  assert.equal(turfSupplier.unitPrice, 3.8);
+  const turfOwned = owned.items.find((i) => i.materialKey === 'turf_standard');
+  assert.equal(turfOwned.isEstimate, false);
+  assert.equal(turfOwned.unitPrice, 3.8);
+});
+
+test('lines still on a seed price are counted so the app can flag them', () => {
+  const zones = [zoneFor('family:value', 'lawn', { lengthM: 10, widthM: 4 })];
+
+  const none = buildQuote({ presetId: 'family:value', zones, labourLines: [] });
+  assert.equal(none.totals.estimatedPriceCount, none.items.length);
+
+  const priceBook = Object.fromEntries(none.items.map((i) => [i.materialKey, 5]));
+  const all = buildQuote({ presetId: 'family:value', zones, labourLines: [], options: { priceBook } });
+  assert.equal(all.totals.estimatedPriceCount, 0);
+});
+
+test('labour is a free-form list — as many men as the job needs', () => {
+  const quote = buildQuote({
+    presetId: 'family:value',
+    zones: [zoneFor('family:value', 'lawn', { lengthM: 10, widthM: 4 })],
+    labourLines: [
+      { description: 'Me', hours: 40, rate: 38 },
+      { description: 'Labourer', hours: 40, rate: 15 },
+      { description: 'Groundworker', hours: 16, rate: 22 },
+    ],
+  });
+
+  assert.equal(quote.labour.length, 3);
+  assert.equal(quote.totals.labourTotal, 40 * 38 + 40 * 15 + 16 * 22);
+  assert.equal(quote.totals.labourHours, 96);
+});
+
+test('plant and hire carry their own units — hire plus hours is the excavation', () => {
+  const quote = buildQuote({
+    presetId: 'family:value',
+    zones: [zoneFor('family:value', 'lawn', { lengthM: 10, widthM: 4 })],
+    labourLines: [{ description: 'Me', hours: 8, rate: 38 }],
+    hireLines: [
+      { description: '8-yard skip', qty: 2, unit: 'each', rate: 280 },
+      { description: 'Mini digger', qty: 3, unit: 'days', rate: 95 },
+    ],
+  });
+
+  assert.equal(quote.hire.length, 2);
+  assert.equal(quote.totals.hireTotal, 2 * 280 + 3 * 95);
+  assert.equal(
+    quote.totals.costSubtotal,
+    Math.round((quote.totals.materialsTotal + quote.totals.labourTotal + quote.totals.hireTotal) * 100) / 100
+  );
+});
+
+test('a labour line with no hours is refused', () => {
+  assert.throws(
+    () =>
+      buildQuote({
+        presetId: 'family:value',
+        zones: [zoneFor('family:value', 'lawn', { lengthM: 4, widthM: 4 })],
+        labourLines: [{ description: 'Me', hours: 0, rate: 38 }],
+      }),
+    /must be more than zero/
+  );
+});
+
+test('a hire line with no quantity is refused', () => {
+  assert.throws(
+    () =>
+      buildQuote({
+        presetId: 'family:value',
+        zones: [zoneFor('family:value', 'lawn', { lengthM: 4, widthM: 4 })],
+        labourLines: [],
+        hireLines: [{ description: 'Skip', qty: 0, rate: 280 }],
+      }),
+    /must be more than zero/
+  );
 });
 
 // --- The failure modes that used to produce a quiet, plausible, wrong quote ---
 
 test('a zone with no dimensions is refused, not priced at zero', () => {
   assert.throws(
-    () => buildQuote({ presetId: 'family:value', zones: [zoneFor('family:value', 'lawn', {})], labour: {} }),
+    () => buildQuote({ presetId: 'family:value', zones: [zoneFor('family:value', 'lawn', {})], labourLines: [] }),
     QuoteError
   );
 });
@@ -131,14 +203,14 @@ test('a zero or negative dimension is refused', () => {
       buildQuote({
         presetId: 'family:value',
         zones: [zoneFor('family:value', 'lawn', { lengthM: 10, widthM: 0 })],
-        labour: { hours: 1, rate: 1 },
+        labourLines: [{ description: 'Me', hours: 1, rate: 1 }],
       }),
     /must be a positive number/
   );
 });
 
 test('an empty zone list cannot produce a quote', () => {
-  assert.throws(() => buildQuote({ presetId: 'family:value', zones: [], labour: {} }), /at least one measured zone/i);
+  assert.throws(() => buildQuote({ presetId: 'family:value', zones: [], labourLines: [] }), /at least one measured zone/i);
 });
 
 test('an unknown material is loud rather than free', () => {
@@ -147,14 +219,14 @@ test('an unknown material is loud rather than free', () => {
       buildQuote({
         presetId: 'family:value',
         zones: [{ role: 'lawn', label: 'Lawn', measure: 'area', materialKey: 'unobtainium', lengthM: 4, widthM: 4 }],
-        labour: { hours: 0, rate: 0 },
+        labourLines: [],
       }),
     /Unknown material/
   );
 });
 
 test('an unknown preset is rejected', () => {
-  assert.throws(() => buildQuote({ presetId: 'nope:nope', zones: [], labour: {} }), /Unknown preset/);
+  assert.throws(() => buildQuote({ presetId: 'nope:nope', zones: [], labourLines: [] }), /Unknown preset/);
 });
 
 test('missing labour numbers are rejected rather than becoming NaN on the PDF', () => {
@@ -163,10 +235,20 @@ test('missing labour numbers are rejected rather than becoming NaN on the PDF', 
       buildQuote({
         presetId: 'family:value',
         zones: [zoneFor('family:value', 'lawn', { lengthM: 4, widthM: 4 })],
-        labour: { hours: undefined, rate: 25 },
+        labourLines: [{ description: 'Me', hours: undefined, rate: 25 }],
       }),
-    /Labour hours/
+    /must be more than zero/
   );
+});
+
+test('a job with no labour at all still prices its materials', () => {
+  const quote = buildQuote({
+    presetId: 'family:value',
+    zones: [zoneFor('family:value', 'lawn', { lengthM: 4, widthM: 4 })],
+    labourLines: [],
+  });
+  assert.equal(quote.totals.labourTotal, 0);
+  assert.ok(quote.totals.materialsTotal > 0);
 });
 
 test('implied £/m² is reported so an out-of-band quote is visible', () => {
@@ -176,7 +258,7 @@ test('implied £/m² is reported so an out-of-band quote is visible', () => {
       zoneFor('family:standard', 'lawn', { lengthM: 8, widthM: 5 }),
       zoneFor('family:standard', 'patio', { lengthM: 5, widthM: 4 }),
     ],
-    labour: { hours: 40, rate: 30 },
+    labourLines: [{ description: 'Me', hours: 40, rate: 30 }],
     options: { marginPercent: 20 },
   });
 

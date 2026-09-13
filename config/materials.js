@@ -1,15 +1,16 @@
 /**
- * Materials catalogue.
+ * The formula book.
  *
- * This is the heart of the quote. Quantities are NOT guessed by a model — they are
- * derived here, deterministically, from dimensions the contractor supplied.
+ * Facts about materials: what unit a merchant sells them in, how much ground
+ * they cover, what they weigh, how much gets wasted in cutting, and what else
+ * has to be bought alongside them. A patio is not just slabs — it is slabs,
+ * sub-base, bedding sand and cement, and forgetting that is how a quote becomes
+ * a loss.
  *
- * ---------------------------------------------------------------------------
- * !! PRICES BELOW ARE PLACEHOLDER SEED DATA. THEY ARE NOT VERIFIED LIVE PRICES !!
- * They exist so the pipeline returns sane numbers during development. Every
- * contractor is expected to override them with their own supplier rates before
- * quoting real work. Do not ship these to production as-is.
- * ---------------------------------------------------------------------------
+ * There are deliberately NO PRICES here. 2.1 tonnes per cubic metre for MOT
+ * Type 1 is a fact about the material and is the same for everyone; what it
+ * costs is the contractor's own business and lives in his price book. Splitting
+ * them means a wrong density can be fixed without ever touching his money.
  *
  * Densities are typical UK bulk values (tonnes per cubic metre) for loose
  * aggregate as delivered. Coverage figures are per purchase unit.
@@ -30,7 +31,6 @@ const MATERIALS = {
     formula: 'area_cover',
     coverM2: 1,
     wastePct: 5,
-    prices: { bandq: 5.25, wickes: 4.99 },
     companions: ['topsoil_screened_turf'],
   },
   turf_premium: {
@@ -39,7 +39,6 @@ const MATERIALS = {
     formula: 'area_cover',
     coverM2: 1,
     wastePct: 5,
-    prices: { bandq: 7.5, wickes: 6.95 },
     companions: ['topsoil_screened_turf'],
   },
   artificial_grass: {
@@ -48,7 +47,6 @@ const MATERIALS = {
     formula: 'area_cover',
     coverM2: 1,
     wastePct: 10,
-    prices: { bandq: 22.0, wickes: 19.99 },
     companions: ['sub_base_path', 'sharp_sand_bedding'],
   },
   topsoil_screened_turf: {
@@ -58,7 +56,6 @@ const MATERIALS = {
     depthM: 0.05,
     densityTPerM3: 1.5,
     wastePct: 0,
-    prices: { bandq: 55.0, wickes: 49.99 },
   },
 
   // ---------- Paving ----------
@@ -68,7 +65,6 @@ const MATERIALS = {
     formula: 'area_cover',
     coverM2: 0.2025,
     wastePct: 10,
-    prices: { bandq: 4.5, wickes: 4.25 },
     companions: ['sub_base_patio', 'sharp_sand_bedding', 'cement_bedding'],
   },
   paving_sandstone: {
@@ -77,7 +73,6 @@ const MATERIALS = {
     formula: 'area_cover',
     coverM2: 0.36,
     wastePct: 10,
-    prices: { bandq: 12.5, wickes: 11.75 },
     companions: ['sub_base_patio', 'sharp_sand_bedding', 'cement_bedding'],
   },
   paving_porcelain: {
@@ -86,7 +81,6 @@ const MATERIALS = {
     formula: 'area_cover',
     coverM2: 0.36,
     wastePct: 10,
-    prices: { bandq: 21.0, wickes: 19.5 },
     companions: ['sub_base_patio', 'sharp_sand_bedding', 'cement_bedding'],
   },
 
@@ -97,7 +91,6 @@ const MATERIALS = {
     formula: 'area_cover',
     coverM2: 0.522,
     wastePct: 12,
-    prices: { bandq: 12.0, wickes: 11.5 },
     companions: ['decking_joist'],
   },
   decking_composite: {
@@ -106,7 +99,6 @@ const MATERIALS = {
     formula: 'area_cover',
     coverM2: 0.522,
     wastePct: 12,
-    prices: { bandq: 34.0, wickes: 31.5 },
     companions: ['decking_joist'],
   },
   decking_joist: {
@@ -115,7 +107,6 @@ const MATERIALS = {
     formula: 'area_cover',
     coverM2: 1.44, // joists at 400mm centres
     wastePct: 5,
-    prices: { bandq: 9.5, wickes: 8.95 },
   },
 
   // ---------- Sub-base and bedding ----------
@@ -126,7 +117,6 @@ const MATERIALS = {
     depthM: 0.1,
     densityTPerM3: 2.1,
     wastePct: 0,
-    prices: { bandq: 62.0, wickes: 57.5 },
   },
   sub_base_path: {
     name: 'MOT Type 1 sub-base (path, 80mm)',
@@ -135,7 +125,6 @@ const MATERIALS = {
     depthM: 0.08,
     densityTPerM3: 2.1,
     wastePct: 0,
-    prices: { bandq: 62.0, wickes: 57.5 },
   },
   sharp_sand_bedding: {
     name: 'Sharp sand — bedding (40mm)',
@@ -144,7 +133,6 @@ const MATERIALS = {
     depthM: 0.04,
     densityTPerM3: 1.6,
     wastePct: 0,
-    prices: { bandq: 48.0, wickes: 44.0 },
   },
   cement_bedding: {
     name: 'Cement — 25kg bag',
@@ -153,7 +141,6 @@ const MATERIALS = {
     derivedFrom: 'sharp_sand_bedding',
     factor: 4, // ~1:6 bedding mix, 4 × 25kg bags per tonne of sand
     offset: 0,
-    prices: { bandq: 8.5, wickes: 7.99 },
   },
 
   // ---------- Surfaces ----------
@@ -164,7 +151,6 @@ const MATERIALS = {
     depthM: 0.05,
     densityTPerM3: 1.6,
     wastePct: 0,
-    prices: { bandq: 68.0, wickes: 62.5 },
     companions: ['membrane_weed'],
   },
   bark_mulch: {
@@ -174,7 +160,6 @@ const MATERIALS = {
     depthM: 0.05,
     densityTPerM3: 0.35,
     wastePct: 0,
-    prices: { bandq: 145.0, wickes: 138.0 },
     companions: ['membrane_weed'],
   },
   membrane_weed: {
@@ -183,7 +168,6 @@ const MATERIALS = {
     formula: 'area_cover',
     coverM2: 1,
     wastePct: 10,
-    prices: { bandq: 1.1, wickes: 0.95 },
   },
   topsoil_beds: {
     name: 'Topsoil — screened (planting beds, 150mm)',
@@ -192,7 +176,6 @@ const MATERIALS = {
     depthM: 0.15,
     densityTPerM3: 1.5,
     wastePct: 0,
-    prices: { bandq: 55.0, wickes: 49.99 },
     // Standard and premium beds come planted; the value tier is mulch only.
     // That difference is a real part of what separates the tiers on price.
     companions: ['planting_shrubs'],
@@ -205,7 +188,6 @@ const MATERIALS = {
     formula: 'linear_unit',
     unitLengthM: 2.4,
     wastePct: 8,
-    prices: { bandq: 18.0, wickes: 16.5 },
   },
   sleeper_oak: {
     name: 'Sleeper — green oak 2.4m',
@@ -213,7 +195,6 @@ const MATERIALS = {
     formula: 'linear_unit',
     unitLengthM: 2.4,
     wastePct: 8,
-    prices: { bandq: 46.0, wickes: 43.0 },
   },
   edging_timber: {
     name: 'Timber edging board 3.0m',
@@ -221,7 +202,6 @@ const MATERIALS = {
     formula: 'linear_unit',
     unitLengthM: 3.0,
     wastePct: 8,
-    prices: { bandq: 7.25, wickes: 6.8 },
   },
   edging_steel: {
     name: 'Steel edging 1.0m',
@@ -229,7 +209,6 @@ const MATERIALS = {
     formula: 'linear_unit',
     unitLengthM: 1.0,
     wastePct: 5,
-    prices: { bandq: 14.5, wickes: 13.25 },
   },
   fence_panel_lap: {
     name: 'Fence panel — lap 1.83m',
@@ -237,7 +216,6 @@ const MATERIALS = {
     formula: 'linear_unit',
     unitLengthM: 1.83,
     wastePct: 0,
-    prices: { bandq: 32.0, wickes: 29.5 },
     companions: ['fence_post', 'postmix'],
   },
   fence_panel_slatted: {
@@ -246,7 +224,6 @@ const MATERIALS = {
     formula: 'linear_unit',
     unitLengthM: 1.8,
     wastePct: 0,
-    prices: { bandq: 68.0, wickes: 64.0 },
     companions: ['fence_post', 'postmix'],
   },
   fence_post: {
@@ -256,7 +233,6 @@ const MATERIALS = {
     derivedFrom: 'ZONE_PRIMARY',
     factor: 1,
     offset: 1, // one more post than panels
-    prices: { bandq: 21.0, wickes: 19.5 },
   },
   postmix: {
     name: 'Postmix concrete — 20kg bag',
@@ -265,7 +241,6 @@ const MATERIALS = {
     derivedFrom: 'fence_post',
     factor: 2,
     offset: 0,
-    prices: { bandq: 7.2, wickes: 6.5 },
   },
 
   // ---------- Planting ----------
@@ -275,14 +250,12 @@ const MATERIALS = {
     formula: 'area_cover',
     coverM2: 0.6, // roughly 1 plant per 0.6m² of bed
     wastePct: 0,
-    prices: { bandq: 9.5, wickes: 8.75 },
   },
   planting_specimen: {
     name: 'Specimen tree / feature plant',
     unit: 'plants',
     formula: 'count',
     wastePct: 0,
-    prices: { bandq: 68.0, wickes: 62.0 },
   },
 };
 

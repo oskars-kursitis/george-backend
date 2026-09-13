@@ -69,6 +69,8 @@ app.get('/images/:id', (req, res) => {
   res.send(image.buffer);
 });
 
+app.use('/price-list', require('./routes/priceList'));
+
 app.get('/presets', (req, res) =>
   res.json({
     presets: listPresets(),
