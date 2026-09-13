@@ -1,4 +1,5 @@
 const express = require('express');
+const sharp = require('sharp');
 const router = express.Router();
 
 const { extractJson } = require('../lib/openai');
@@ -58,9 +59,17 @@ router.post('/', async (req, res, next) => {
 
     if (!photoId) return res.status(400).json({ error: 'photoId is required (from /concepts).' });
     if (!presetId) return res.status(400).json({ error: 'presetId is required.' });
-    if (!imageStore.read(photoId)) {
+    const photo = imageStore.read(photoId);
+    if (!photo) {
       return res.status(404).json({ error: 'That photo has expired. Upload it again.' });
     }
+
+    // Downscale for the vision call. Deciding "is there a lawn here" needs far
+    // less resolution than rendering does, and this is billed per image token.
+    const thumbnail = await sharp(photo.buffer)
+      .resize(768, 768, { fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: 78 })
+      .toBuffer();
 
     const preset = resolvePreset(presetId);
     const candidateRoles = preset.zones.map((z) => z.role);
@@ -80,7 +89,7 @@ Rules, and these matter:
 
     const result = await extractJson({
       instructions,
-      imageUrls: [imageStore.publicUrl(req, photoId)],
+      images: [{ buffer: thumbnail, contentType: 'image/jpeg' }],
       schemaName: 'garden_zones',
       schema: ZONES_SCHEMA,
     });
