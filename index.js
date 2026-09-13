@@ -7,6 +7,7 @@ dotenv.config();
 const { requireApiKey, rateLimit } = require('./middleware/security');
 const imageStore = require('./lib/imageStore');
 const { listPresets } = require('./config/presets');
+const { keyProblem } = require('./lib/openai');
 const { MATERIALS } = require('./config/materials');
 
 const app = express();
@@ -99,10 +100,29 @@ app.use((err, req, res, next) => {
 
   console.error(`[error] ${req.method} ${req.path}:`, err);
 
-  // Detail goes to the log, not to the caller.
+  // An auth failure against OpenAI is OUR configuration problem, not the
+  // caller's. Reflecting its 401 straight through told the app its own
+  // x-george-key was rejected, which is a different fault entirely — and
+  // leaked the provider's error text to the handset.
+  if (err?.constructor?.name?.startsWith('APIError') || err?.error?.type || err?.name === 'AuthenticationError') {
+    const upstream = err.status;
+    if (upstream === 401 || upstream === 403) {
+      return res.status(503).json({
+        error: 'George is not configured correctly. Check the server API key.',
+      });
+    }
+    if (upstream === 429) {
+      return res.status(503).json({ error: 'The image service is rate limiting us. Try again shortly.' });
+    }
+    return res.status(502).json({ error: 'The image service could not complete that. Try again.' });
+  }
+
+  // Detail goes to the log, not to the caller — unless it was explicitly
+  // marked safe, or it is a 4xx the caller caused and can act on.
   const isClientError = err?.status >= 400 && err?.status < 500;
+  const safeToShow = err?.expose === true || isClientError;
   res.status(err?.status || 500).json({
-    error: isClientError ? err.message : 'Something went wrong. Please try again.',
+    error: safeToShow ? err.message : 'Something went wrong. Please try again.',
   });
 });
 
@@ -112,6 +132,18 @@ if (require.main === module) {
     console.log(`  presets:   ${listPresets().length}`);
     console.log(`  materials: ${Object.keys(MATERIALS).length}`);
     if (!process.env.GEORGE_API_KEY) console.log('  auth:      DISABLED (set GEORGE_API_KEY)');
+
+    // Fail loudly here rather than three screens into the flow on a handset.
+    const problem = keyProblem();
+    if (problem) {
+      console.log('');
+      console.log('  !! ' + problem);
+      console.log('  !! Image generation and zone detection WILL fail.');
+      console.log('  !! Put your real key in .env as OPENAI_API_KEY=sk-...');
+      console.log('');
+    } else {
+      console.log('  openai:    key present');
+    }
   });
 }
 
