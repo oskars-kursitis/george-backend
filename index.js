@@ -15,6 +15,12 @@ const PORT = process.env.PORT || 3000;
 
 app.disable('x-powered-by');
 
+// Render terminates TLS at its proxy. Without this req.protocol reports http,
+// which would make the image URLs we hand the app http:// — and Android blocks
+// cleartext to anything but localhost, so every render would fail to load.
+// It also lets the rate limiter see the real client IP rather than the proxy's.
+app.set('trust proxy', 1);
+
 // One line per request. Invaluable when driving the app from a phone and the
 // only other signal is a spinner.
 app.use((req, res, next) => {
