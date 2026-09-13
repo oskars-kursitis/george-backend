@@ -55,7 +55,7 @@ const ZONES_SCHEMA = {
 
 router.post('/', async (req, res, next) => {
   try {
-    const { photoId, presetId, brief, location = 'back' } = req.body;
+    const { photoId, presetId, brief, location = 'back', scopeRoles } = req.body;
 
     if (!photoId) return res.status(400).json({ error: 'photoId is required (from /concepts).' });
     if (!presetId) return res.status(400).json({ error: 'presetId is required.' });
@@ -72,7 +72,14 @@ router.post('/', async (req, res, next) => {
       .toBuffer();
 
     const preset = resolvePreset(presetId, { location });
-    const candidateRoles = preset.zones.map((z) => z.role);
+
+    // Only ask about work that is actually in scope. Offering to measure a
+    // patio on a fencing job is how the quote drifts away from the brief.
+    const inScope = Array.isArray(scopeRoles) && scopeRoles.length ? new Set(scopeRoles) : null;
+    const presetZones = inScope
+      ? preset.zones.filter((z) => inScope.has(z.role))
+      : preset.zones;
+    const candidateRoles = presetZones.map((z) => z.role);
 
     const instructions = `You are a UK landscaping contractor looking at a photo of a garden before work starts.
 
@@ -99,7 +106,7 @@ Rules, and these matter:
     // made of. The model only gets a say in whether it applies.
     const byRole = new Map((result.zones || []).map((z) => [z.role, z]));
 
-    const zones = preset.zones.map((z) => {
+    const zones = presetZones.map((z) => {
       const seen = byRole.get(z.role);
       return {
         role: z.role,

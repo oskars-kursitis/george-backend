@@ -219,14 +219,33 @@ const TIERS = {
  * geometry must come from the photo (not the style), and the light must read as
  * British or UK customers clock it as fake instantly.
  */
+/**
+ * Shared render language.
+ *
+ * Deliberately says nothing about furniture or "signs of life". That used to
+ * live here unconditionally and it caused real harm: a brief asking for a fence
+ * and nothing else came back as a full makeover with a dining set, which the
+ * customer would reasonably expect to be included. Furniture is now added only
+ * when the job actually builds somewhere to sit.
+ */
 const BASE_PROMPT =
   'Photorealistic render of this exact garden after landscaping work. ' +
   'Keep the camera position, viewing angle, perspective and proportions identical to the original photo. ' +
   'Keep every fixed structure exactly as it is: house, walls, fences, boundaries, steps, drains, windows and doors. ' +
-  'Only change the ground surfaces, planting and garden features. ' +
   'UK residential garden. Late afternoon daylight, bright but soft, light cloud with the sun breaking through — British light, not Californian golden hour. ' +
-  'Show the garden in use: outdoor furniture, a set table, signs of life. No people, no text, no watermarks. ' +
-  'Planting shown at approximately two years of growth.';
+  'No people, no text, no watermarks. Planting shown at approximately two years of growth.';
+
+/** Human-readable description of each area of work, for the render prompt. */
+const ROLE_WORKS = {
+  [ROLES.LAWN]: 'the lawn',
+  [ROLES.PATIO]: 'the paved patio or seating area',
+  [ROLES.PATH]: 'the path',
+  [ROLES.BEDS]: 'the planting beds',
+  [ROLES.SCREENING]: 'the fencing or screening',
+  [ROLES.DECK]: 'the decking',
+  [ROLES.EDGING]: 'the edging or retaining',
+  [ROLES.FEATURE]: 'the feature planting',
+};
 
 /**
  * Fixed costs do not scale down. The same skip, the same minimum aggregate
@@ -234,8 +253,7 @@ const BASE_PROMPT =
  * one — so the rate per square metre climbs steeply as jobs get small.
  *
  * Quoting a small job at large-job rates under-quotes it, which is the exact
- * failure this build exists to prevent. These multipliers adjust the tier's
- * headline band for the size of the actual job.
+ * failure this build exists to prevent.
  */
 const SIZE_BANDS = [
   { underM2: 15, multiplier: 1.9, label: 'Very small job — fixed costs dominate' },
@@ -344,17 +362,72 @@ function listPresets() {
  * `measurements` is optional: stage 1 (concepts) has none, stage 2 (spec render)
  * passes the confirmed dimensions so the geometry in the image matches the quote.
  */
-function buildPrompt({ presetId: id, brief, measurements, location = 'back', approxAreaM2 }) {
+/**
+ * Build the render prompt.
+ *
+ * `scope` is the decisive part: the render must depict the work being quoted
+ * for and nothing else. A picture that promises a new patio when the quote is
+ * for a fence is not a nice extra, it is a mis-sell waiting to happen.
+ */
+function buildPrompt({ presetId: id, brief, measurements, location = 'back', approxAreaM2, scope }) {
   const { style, tier, place } = resolvePreset(id, { location });
   const parts = [BASE_PROMPT, place.prompt];
-  // A custom preset carries no design language of its own — the brief is the
-  // design direction, so adding an empty "Design direction:." line would only
-  // dilute it.
-  if (style.prompt) parts.push(`Design direction: ${style.prompt}.`);
-  parts.push(`Specification: ${tier.prompt}.`);
 
-  // Stage one has no measurements, so without this the model invents generic
-  // proportions and cheerfully fits a six-seater dining set into 20m2.
+  const roles = scope?.roles?.length ? scope.roles : style.roles;
+  const isFullRedesign = scope ? scope.isFullRedesign !== false : true;
+
+  // --- What is being done, and just as importantly what is not -------------
+  const works = roles.map((r) => ROLE_WORKS[r]).filter(Boolean);
+  if (works.length) {
+    parts.push(`THE ONLY WORK BEING CARRIED OUT IS: ${works.join(', ')}.`);
+  }
+  if (scope?.worksSummary) {
+    parts.push(`Specifically: ${scope.worksSummary}`);
+  }
+
+  if (!isFullRedesign) {
+    parts.push(
+      'CRITICAL — this is NOT a garden makeover. Change ONLY the work listed above. ' +
+        'Everything else in the photograph must remain exactly as it is, including its current ' +
+        'condition: do not improve, replace, tidy, re-turf, re-pave or restyle anything that is ' +
+        'not on that list, and do not add any new feature, planting, lighting or furniture. ' +
+        'A worn lawn stays a worn lawn. The customer is paying only for the work listed.'
+    );
+    if (scope?.leaveUnchanged?.length) {
+      parts.push(`Leave completely untouched: ${scope.leaveUnchanged.join(', ')}.`);
+    }
+  } else {
+    // Only dress the garden when the job actually builds somewhere to sit.
+    const hasSeating = roles.includes(ROLES.PATIO) || roles.includes(ROLES.DECK);
+    if (hasSeating) {
+      parts.push('Show the seating area in use with suitable outdoor furniture.');
+    }
+  }
+
+  // --- Design language ------------------------------------------------------
+  if (style.prompt && isFullRedesign) parts.push(`Design direction: ${style.prompt}.`);
+
+  // Name the materials actually in scope rather than reciting the tier's stock
+  // sentence. A fencing job should not be told about sandstone paving.
+  const { MATERIALS } = require('./materials');
+  const specMaterials = roles
+    .map((r) => tier.materials[r])
+    .filter(Boolean)
+    .map((key) => MATERIALS[key]?.name)
+    .filter(Boolean);
+
+  if (specMaterials.length) {
+    parts.push(`Build it from: ${[...new Set(specMaterials)].join('; ')}.`);
+  }
+  if (isFullRedesign) {
+    parts.push(`Overall specification: ${tier.prompt}.`);
+  }
+
+  if (brief && brief.trim()) {
+    parts.push(`Client's specific requirements, which take priority: "${brief.trim()}".`);
+  }
+
+  // --- Scale ----------------------------------------------------------------
   if (Number.isFinite(approxAreaM2) && approxAreaM2 > 0) {
     parts.push(
       `IMPORTANT — SCALE: the whole garden is only about ${Math.round(approxAreaM2)} square metres. ` +
@@ -362,10 +435,6 @@ function buildPrompt({ presetId: id, brief, measurements, location = 'back', app
         `distance, and do not include any feature or furniture that would not physically fit in ` +
         `${Math.round(approxAreaM2)} square metres. A small garden should look small.`
     );
-  }
-
-  if (brief && brief.trim()) {
-    parts.push(`Client's specific requirements, which take priority: "${brief.trim()}".`);
   }
 
   if (Array.isArray(measurements) && measurements.length) {
@@ -396,6 +465,7 @@ module.exports = {
   STYLES,
   TIERS,
   BASE_PROMPT,
+  ROLE_WORKS,
   listPresets,
   resolvePreset,
   buildPrompt,

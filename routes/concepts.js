@@ -7,6 +7,7 @@ const upload = require('../middleware/upload');
 const { getClient, MODELS } = require('../lib/openai');
 const imageStore = require('../lib/imageStore');
 const { buildPrompt, resolvePreset } = require('../config/presets');
+const { deriveScope } = require('../lib/scope');
 
 /**
  * POST /concepts    (multipart: photo, presetId, brief?)
@@ -40,7 +41,21 @@ router.post('/', upload.single('photo'), async (req, res, next) => {
 
     const photoId = imageStore.save(normalised, 'image/jpeg');
 
-    const prompt = buildPrompt({ presetId, brief, location, approxAreaM2: Number(approxAreaM2) });
+    // What is actually being paid for. Without this the render embellishes and
+    // promises work the quote does not contain.
+    const scope = await deriveScope({
+      brief,
+      presetRoles: preset.zones.map((z) => z.role),
+      isCustom: preset.styleKey === 'custom',
+    });
+
+    const prompt = buildPrompt({
+      presetId,
+      brief,
+      location,
+      approxAreaM2: Number(approxAreaM2),
+      scope,
+    });
     const imageFile = await OpenAI.toFile(normalised, 'garden.jpg', { type: 'image/jpeg' });
 
     const result = await getClient().images.edit({
@@ -74,10 +89,12 @@ router.post('/', upload.single('photo'), async (req, res, next) => {
         tierLabel: preset.tier.label,
         pricePerM2: preset.tier.pricePerM2,
       },
+      scope,
       concepts: concepts.map((c) => ({ index: c.index, id: c.id, url: imageStore.publicUrl(req, c.id) })),
       // Concepts are indicative only. The quote comes from measurements, not this.
       disclaimer:
-        'Concept only — not to scale and not priced. Measure the garden to produce a quote.',
+        'Concept only — not to scale and not priced. Shows the quoted works only; '
+        + 'everything else stays as it is.',
     });
   } catch (error) {
     next(error);
