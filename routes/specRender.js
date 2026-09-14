@@ -19,8 +19,16 @@ const { buildPrompt } = require('../config/presets');
  */
 router.post('/', async (req, res, next) => {
   try {
-    const { photoId, presetId, brief, measurements, location = 'back', scope, referenceImageId } =
-      req.body;
+    const {
+      photoId,
+      presetId,
+      brief,
+      measurements,
+      location = 'back',
+      scope,
+      referenceImageId,
+      materialNames,
+    } = req.body;
 
     if (!photoId) return res.status(400).json({ error: 'photoId is required (from /concepts).' });
     if (!presetId) return res.status(400).json({ error: 'presetId is required.' });
@@ -46,6 +54,7 @@ router.post('/', async (req, res, next) => {
       location,
       approxAreaM2: measuredArea > 0 ? measuredArea : undefined,
       scope,
+      materialNames,
     });
     const images = [
       await OpenAI.toFile(original.buffer, 'garden.jpg', { type: original.contentType }),

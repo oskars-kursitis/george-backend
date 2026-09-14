@@ -365,7 +365,15 @@ function listPresets() {
  * for and nothing else. A picture that promises a new patio when the quote is
  * for a fence is not a nice extra, it is a mis-sell waiting to happen.
  */
-function buildPrompt({ presetId: id, brief, measurements, location = 'back', approxAreaM2, scope }) {
+function buildPrompt({
+  presetId: id,
+  brief,
+  measurements,
+  location = 'back',
+  approxAreaM2,
+  scope,
+  materialNames,
+}) {
   const { style, tier, place } = resolvePreset(id, { location });
   const parts = [BASE_PROMPT, place.prompt];
 
@@ -406,14 +414,16 @@ function buildPrompt({ presetId: id, brief, measurements, location = 'back', app
   // Name the materials actually in scope rather than reciting the tier's stock
   // sentence. A fencing job should not be told about sandstone paving.
   const { MATERIALS } = require('./materials');
-  // What the job is actually made of: the brief's choice where it made one,
-  // otherwise the default for that area. The tier no longer has a say — it
-  // describes finish, not specification.
-  const specMaterials = roles
-    .map((r) => scope?.materials?.[r] || DEFAULT_MATERIALS[r])
-    .filter(Boolean)
-    .map((key) => MATERIALS[key]?.name)
-    .filter(Boolean);
+  // What the job is actually made of. By the final render the contractor has
+  // been through the build-up and may have swapped things, so his list wins
+  // over anything inferred earlier.
+  const specMaterials = Array.isArray(materialNames) && materialNames.length
+    ? materialNames
+    : roles
+        .map((r) => scope?.materials?.[r] || DEFAULT_MATERIALS[r])
+        .filter(Boolean)
+        .map((key) => MATERIALS[key]?.name)
+        .filter(Boolean);
 
   if (specMaterials.length) {
     parts.push(`Build it from: ${[...new Set(specMaterials)].join('; ')}.`);

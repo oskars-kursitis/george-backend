@@ -54,6 +54,7 @@ const MATERIALS = {
   },
   topsoil_screened_turf: {
     name: 'Topsoil — screened (turf bed)',
+    hidden: true, // buried or consumed — never visible in a render
     group: 'topsoil',
     unit: 'tonnes',
     formula: 'area_volume',
@@ -112,6 +113,7 @@ const MATERIALS = {
   },
   decking_joist: {
     name: 'Decking joist — treated 47×100 3.6m',
+    hidden: true, // buried or consumed — never visible in a render
     group: 'joist',
     unit: 'lengths',
     formula: 'area_cover',
@@ -122,6 +124,7 @@ const MATERIALS = {
   // ---------- Sub-base and bedding ----------
   sub_base_patio: {
     name: 'MOT Type 1 sub-base (patio, 100mm)',
+    hidden: true, // buried or consumed — never visible in a render
     group: 'subbase',
     unit: 'tonnes',
     formula: 'area_volume',
@@ -131,6 +134,7 @@ const MATERIALS = {
   },
   sub_base_path: {
     name: 'MOT Type 1 sub-base (path, 80mm)',
+    hidden: true, // buried or consumed — never visible in a render
     group: 'subbase',
     unit: 'tonnes',
     formula: 'area_volume',
@@ -140,6 +144,7 @@ const MATERIALS = {
   },
   sharp_sand_bedding: {
     name: 'Sharp sand — bedding (40mm)',
+    hidden: true, // buried or consumed — never visible in a render
     group: 'bedding',
     unit: 'tonnes',
     formula: 'area_volume',
@@ -149,6 +154,7 @@ const MATERIALS = {
   },
   cement_bedding: {
     name: 'Cement — 25kg bag',
+    hidden: true, // buried or consumed — never visible in a render
     group: 'cement',
     unit: 'bags',
     formula: 'derived',
@@ -180,6 +186,7 @@ const MATERIALS = {
   },
   membrane_weed: {
     name: 'Weed control membrane',
+    hidden: true, // buried or consumed — never visible in a render
     group: 'membrane',
     unit: 'm²',
     formula: 'area_cover',
@@ -188,6 +195,7 @@ const MATERIALS = {
   },
   topsoil_beds: {
     name: 'Topsoil — screened (planting beds, 150mm)',
+    hidden: true, // buried or consumed — never visible in a render
     group: 'topsoil',
     unit: 'tonnes',
     formula: 'area_volume',
@@ -297,6 +305,7 @@ const MATERIALS = {
   },
   postmix: {
     name: 'Postmix concrete — 20kg bag',
+    hidden: true, // buried or consumed — never visible in a render
     group: 'fixing',
     unit: 'bags',
     formula: 'derived',
@@ -331,6 +340,11 @@ const MATERIALS = {
  */
 const HEAD_GROUPS = new Set(['decking', 'edging', 'fence_panel', 'lawn', 'paving', 'planting', 'surface', 'topsoil']);
 
+/** Is this material visible in the finished garden? */
+function isVisible(key) {
+  return !MATERIALS[key]?.hidden;
+}
+
 /** Can this material be the main thing an area of work is made of? */
 function canHeadZone(key) {
   return HEAD_GROUPS.has(MATERIALS[key]?.group);
@@ -351,4 +365,4 @@ function getMaterial(key) {
   return m;
 }
 
-module.exports = { MATERIALS, DERIVED_KEYS, HEAD_GROUPS, canHeadZone, getMaterial };
+module.exports = { MATERIALS, DERIVED_KEYS, HEAD_GROUPS, canHeadZone, isVisible, getMaterial };

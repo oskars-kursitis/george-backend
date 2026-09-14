@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { buildQuote, quantitiesForZone, expandMaterials, QuoteError } = require('../lib/calculator');
+const { buildQuote, quantitiesForZone, expandMaterials, buildUpFor, QuoteError } = require('../lib/calculator');
 const { resolvePreset } = require('../config/presets');
 
 /** Helper: build a zone from a preset role using the preset's own material mapping. */
@@ -452,4 +452,46 @@ test('measurements reach the prompt once they exist', () => {
   });
   assert.match(prompt, /back lawn approximately 8m/);
   assert.match(prompt, /fencing running approximately 18m/);
+});
+
+test('buried materials never reach the render prompt', () => {
+  // Sub-base, postmix and membrane are real costs but invisible when the job is
+  // finished. A render told to include them would draw a pile of hardcore.
+  const { isVisible } = require('../config/materials');
+  const patio = buildUpFor('paving_sandstone');
+
+  const visible = patio.filter((line) => !line.hidden).map((line) => line.name);
+  const buried = patio.filter((line) => line.hidden).map((line) => line.key);
+
+  assert.ok(visible.some((n) => /sandstone/i.test(n)), 'the paving shows');
+  assert.ok(buried.includes('sub_base_patio'), 'the sub-base does not');
+  assert.ok(buried.includes('cement_bedding'), 'nor the cement');
+  assert.equal(isVisible('postmix'), false);
+
+  const prompt = buildPrompt({
+    presetId: 'family:standard',
+    location: 'back',
+    materialNames: visible,
+  });
+  assert.ok(!/sub-base|Postmix|Cement/i.test(prompt), 'prompt names nothing buried');
+});
+
+test('the contractor final material list beats what the brief implied', () => {
+  const prompt = buildPrompt({
+    presetId: 'custom:standard',
+    location: 'back',
+    scope: {
+      roles: ['screening'],
+      materials: { screening: 'fence_panel_lap' },
+      isFullRedesign: false,
+      worksSummary: 'Fence.',
+      leaveUnchanged: [],
+    },
+    // He swapped to close board with concrete posts on the Measure screen.
+    materialNames: ['Fence panel — close board 1.83m', 'Fence post — concrete slotted 2.4m'],
+  });
+
+  assert.match(prompt, /close board/);
+  assert.match(prompt, /concrete slotted/);
+  assert.ok(!/lap 1\.83m/.test(prompt), 'the earlier guess must not survive');
 });
