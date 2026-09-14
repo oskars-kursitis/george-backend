@@ -24,7 +24,8 @@ const CONCEPT_COUNT = 3;
 
 router.post('/', upload.single('photo'), async (req, res, next) => {
   try {
-    const { presetId, brief, location = 'back', approxAreaM2 } = req.body;
+    const { presetId, brief, location = 'back', approxAreaM2, inspirationImageId } = req.body;
+    const inspiration = req.body.inspiration ? JSON.parse(req.body.inspiration) : null;
 
     if (!req.file) return res.status(400).json({ error: 'A photo of the garden is required.' });
     if (!presetId) return res.status(400).json({ error: 'presetId is required.' });
@@ -55,12 +56,24 @@ router.post('/', upload.single('photo'), async (req, res, next) => {
       location,
       approxAreaM2: Number(approxAreaM2),
       scope,
+      inspiration,
     });
-    const imageFile = await OpenAI.toFile(normalised, 'garden.jpg', { type: 'image/jpeg' });
+    const images = [await OpenAI.toFile(normalised, 'garden.jpg', { type: 'image/jpeg' })];
+
+    // The picture they sent, alongside their own garden. Words alone rarely
+    // carry a look; the model does far better when it can see it.
+    if (inspirationImageId) {
+      const reference = imageStore.read(inspirationImageId);
+      if (reference) {
+        images.push(
+          await OpenAI.toFile(reference.buffer, 'inspiration.jpg', { type: reference.contentType })
+        );
+      }
+    }
 
     const result = await getClient().images.edit({
       model: MODELS.CONCEPT_IMAGE,
-      image: imageFile,
+      image: images.length > 1 ? images : images[0],
       prompt,
       size: '1024x1024',
       quality: 'low',

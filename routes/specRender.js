@@ -28,6 +28,7 @@ router.post('/', async (req, res, next) => {
       scope,
       referenceImageId,
       materialNames,
+      inspiration,
     } = req.body;
 
     if (!photoId) return res.status(400).json({ error: 'photoId is required (from /concepts).' });
@@ -55,6 +56,7 @@ router.post('/', async (req, res, next) => {
       approxAreaM2: measuredArea > 0 ? measuredArea : undefined,
       scope,
       materialNames,
+      inspiration,
     });
     const images = [
       await OpenAI.toFile(original.buffer, 'garden.jpg', { type: original.contentType }),

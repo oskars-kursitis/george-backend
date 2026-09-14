@@ -114,6 +114,7 @@ app.use(requireApiKey);
 
 // Generation costs real money, so it is throttled harder than the rest.
 app.use('/intake', rateLimit({ name: 'intake', max: 20 }), require('./routes/intake'));
+app.use('/inspiration', rateLimit({ name: 'inspiration', max: 20 }), require('./routes/inspiration'));
 app.use('/concepts', rateLimit({ name: 'concepts', max: 8 }), require('./routes/concepts'));
 app.use('/zones', rateLimit({ name: 'zones', max: 20 }), require('./routes/zones'));
 app.use('/quote', rateLimit({ name: 'quote', max: 120 }), require('./routes/quote'));

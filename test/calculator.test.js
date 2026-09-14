@@ -495,3 +495,44 @@ test('the contractor final material list beats what the brief implied', () => {
   assert.match(prompt, /concrete slotted/);
   assert.ok(!/lap 1\.83m/.test(prompt), 'the earlier guess must not survive');
 });
+
+// --- Inspiration photos -----------------------------------------------------
+// "We went to Italy and saw this garden, can we do something like that?"
+
+test('a different garden is a style reference only, never a layout', () => {
+  const prompt = buildPrompt({
+    presetId: 'custom:premium',
+    location: 'back',
+    scope: { roles: ['patio'], isFullRedesign: true, worksSummary: '', leaveUnchanged: [] },
+    inspiration: {
+      looksLikeSameGarden: false,
+      styleDescription: 'pale travertine, clipped box, olive trees in terracotta, hot dry light',
+    },
+  });
+
+  assert.match(prompt, /DIFFERENT garden/);
+  assert.match(prompt, /Do NOT copy its layout/);
+  assert.match(prompt, /keeps its own shape, size, house and boundaries/);
+  assert.match(prompt, /British garden and British light/);
+});
+
+test('a visualisation of their own garden is followed instead', () => {
+  const prompt = buildPrompt({
+    presetId: 'custom:standard',
+    location: 'back',
+    scope: { roles: ['patio'], isFullRedesign: true, worksSummary: '', leaveUnchanged: [] },
+    inspiration: {
+      looksLikeSameGarden: true,
+      styleDescription: 'sandstone patio, deep planted borders, timber screen',
+    },
+  });
+
+  assert.match(prompt, /THIS SAME garden/);
+  assert.match(prompt, /Follow it closely/);
+  assert.ok(!/Do NOT copy its layout/.test(prompt), 'their own garden keeps its layout');
+});
+
+test('no inspiration leaves the prompt untouched', () => {
+  const base = { presetId: 'family:standard', location: 'back' };
+  assert.ok(!/customer has supplied/.test(buildPrompt(base)));
+});

@@ -373,6 +373,7 @@ function buildPrompt({
   approxAreaM2,
   scope,
   materialNames,
+  inspiration,
 }) {
   const { style, tier, place } = resolvePreset(id, { location });
   const parts = [BASE_PROMPT, place.prompt];
@@ -405,6 +406,27 @@ function buildPrompt({
     const hasSeating = roles.includes(ROLES.PATIO) || roles.includes(ROLES.DECK);
     if (hasSeating) {
       parts.push('Show the seating area in use with suitable outdoor furniture.');
+    }
+  }
+
+  // --- What the customer sent -----------------------------------------------
+  // "We went to Italy and saw this garden." The look is worth taking; the plot
+  // it was photographed in is not. Getting this wrong renders somebody else's
+  // garden in place of the customer's.
+  if (inspiration?.styleDescription) {
+    if (inspiration.looksLikeSameGarden) {
+      parts.push(
+        'The customer has supplied a visualisation of THIS SAME garden as the intended result. ' +
+          `Follow it closely: ${inspiration.styleDescription}`
+      );
+    } else {
+      parts.push(
+        'The customer has supplied a photograph of a DIFFERENT garden they like, as a style reference only. ' +
+          `Take from it only the look: ${inspiration.styleDescription} ` +
+          'Do NOT copy its layout, its proportions, its boundaries, its buildings or its background. ' +
+          'The garden being worked on is the one in the site photograph, and it keeps its own shape, ' +
+          'size, house and boundaries. Adapt the look to a British garden and British light.'
+      );
     }
   }
 
