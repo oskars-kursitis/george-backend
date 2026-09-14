@@ -57,6 +57,11 @@ app.use(
 
 // ---- Public ---------------------------------------------------------------
 
+// Render pings the root as its health check. Without this it sits behind the
+// API key and answers 401, which fills the log with failures and can make the
+// service look unhealthy.
+app.get('/', (req, res) => res.json({ service: 'george-backend', status: 'ok' }));
+
 app.get('/health', (req, res) => {
   res.json({
     status: 'George is alive',
