@@ -157,60 +157,56 @@ const STYLES = {
 };
 
 /**
- * Tiers swap material grade inside a style, and set the expected £/m² band.
+ * A sensible starting material for each area of work.
+ *
+ * Deliberately NOT tied to the tier any more. The tier used to silently pick
+ * materials, which meant four different things competed to decide the same
+ * question — the brief, the tier, the contractor's own choice and his own
+ * catalogue. Materials now come from one place: proposed from the brief,
+ * defaulted here when it says nothing, and changed by the contractor whenever
+ * he likes.
+ */
+const DEFAULT_MATERIALS = {
+  [ROLES.LAWN]: 'turf_standard',
+  [ROLES.PATIO]: 'paving_sandstone',
+  [ROLES.PATH]: 'gravel_decorative',
+  [ROLES.BEDS]: 'topsoil_beds',
+  [ROLES.SCREENING]: 'fence_panel_lap',
+  [ROLES.DECK]: 'decking_softwood',
+  [ROLES.EDGING]: 'sleeper_softwood',
+  [ROLES.FEATURE]: 'planting_specimen',
+};
+
+/**
+ * Tiers are now purely about FINISH — how posh it looks and roughly what that
+ * costs per square metre. They no longer choose a single material.
  * Bands are all-in build rates (materials + labour + margin) used only to show
  * the customer a range before rendering. They are NOT the quote.
  */
 const TIERS = {
   value: {
     label: 'Value',
-    blurb: 'Concrete paving, treated softwood, real turf. Sensible and solid.',
+    blurb: 'Neat and practical. Plain detailing, simple shapes, nothing fussy.',
     pricePerM2: [55, 85],
-    prompt: 'built to a modest budget using concrete paving and treated softwood, honest and tidy rather than luxurious',
-    materials: {
-      [ROLES.LAWN]: 'turf_standard',
-      [ROLES.PATIO]: 'paving_concrete_riven',
-      [ROLES.PATH]: 'gravel_decorative',
-      [ROLES.BEDS]: 'bark_mulch',
-      [ROLES.SCREENING]: 'fence_panel_lap',
-      [ROLES.DECK]: 'decking_softwood',
-      [ROLES.EDGING]: 'edging_timber',
-      [ROLES.FEATURE]: 'planting_specimen',
-    },
+    prompt:
+      'a plain, honest finish — simple shapes, straightforward detailing, tidy rather than luxurious, ' +
+      'sparser planting, no decorative extras',
   },
   standard: {
     label: 'Standard',
-    blurb: 'Sandstone paving, quality turf, planted borders. The usual sweet spot.',
+    blurb: 'Well finished and well stocked. The usual sweet spot.',
     pricePerM2: [90, 140],
-    prompt: 'built to a good mid-range specification with natural sandstone paving and well-stocked planted borders',
-    materials: {
-      [ROLES.LAWN]: 'turf_premium',
-      [ROLES.PATIO]: 'paving_sandstone',
-      [ROLES.PATH]: 'gravel_decorative',
-      [ROLES.BEDS]: 'topsoil_beds',
-      [ROLES.SCREENING]: 'fence_panel_lap',
-      [ROLES.DECK]: 'decking_softwood',
-      [ROLES.EDGING]: 'sleeper_softwood',
-      [ROLES.FEATURE]: 'planting_specimen',
-    },
+    prompt:
+      'a well-finished result — neat edges, well-stocked planting, considered proportions, ' +
+      'the standard of work a good local contractor turns out',
   },
   premium: {
     label: 'Premium',
-    blurb: 'Porcelain, composite deck, slatted screens, specimen planting.',
+    blurb: 'Crisp detailing, generous planting, a designed look.',
     pricePerM2: [150, 240],
     prompt:
-      'built to a premium specification with vitrified porcelain paving, composite decking, ' +
-      'slatted screening and mature specimen planting, crisp detailing throughout',
-    materials: {
-      [ROLES.LAWN]: 'turf_premium',
-      [ROLES.PATIO]: 'paving_porcelain',
-      [ROLES.PATH]: 'paving_porcelain',
-      [ROLES.BEDS]: 'topsoil_beds',
-      [ROLES.SCREENING]: 'fence_panel_slatted',
-      [ROLES.DECK]: 'decking_composite',
-      [ROLES.EDGING]: 'sleeper_oak',
-      [ROLES.FEATURE]: 'planting_specimen',
-    },
+      'a premium finish — crisp precise detailing, tight joints, generous mature planting, ' +
+      'considered lighting, the look of a designed garden rather than a tidied one',
   },
 };
 
@@ -324,7 +320,7 @@ function resolvePreset(id, { location = 'back' } = {}) {
     role,
     label: ROLE_LABEL[role],
     measure: ROLE_MEASURE[role],
-    materialKey: tier.materials[role],
+    materialKey: DEFAULT_MATERIALS[role],
   }));
 
   return { id, styleKey, tierKey, style, tier, zones, location, place };
@@ -419,9 +415,9 @@ function buildPrompt({ presetId: id, brief, measurements, location = 'back', app
   if (specMaterials.length) {
     parts.push(`Build it from: ${[...new Set(specMaterials)].join('; ')}.`);
   }
-  if (isFullRedesign) {
-    parts.push(`Overall specification: ${tier.prompt}.`);
-  }
+  // Always. This is now the tier's only job in the render, and it describes
+  // finish rather than specification, so it cannot contradict the materials.
+  parts.push(`Finish: ${tier.prompt}.`);
 
   if (brief && brief.trim()) {
     parts.push(`Client's specific requirements, which take priority: "${brief.trim()}".`);
@@ -460,6 +456,7 @@ module.exports = {
   SIZE_BANDS,
   bandForArea,
   smallJobMultiplier,
+  DEFAULT_MATERIALS,
   ROLE_LABEL,
   ROLE_MEASURE,
   STYLES,

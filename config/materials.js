@@ -27,6 +27,7 @@ const MATERIALS = {
   // ---------- Lawn ----------
   turf_standard: {
     name: 'Turf — standard lawn',
+    group: 'lawn',
     unit: 'rolls (1m²)',
     formula: 'area_cover',
     coverM2: 1,
@@ -35,6 +36,7 @@ const MATERIALS = {
   },
   turf_premium: {
     name: 'Turf — premium rye blend',
+    group: 'lawn',
     unit: 'rolls (1m²)',
     formula: 'area_cover',
     coverM2: 1,
@@ -43,6 +45,7 @@ const MATERIALS = {
   },
   artificial_grass: {
     name: 'Artificial grass (30mm pile)',
+    group: 'lawn',
     unit: 'm²',
     formula: 'area_cover',
     coverM2: 1,
@@ -51,6 +54,7 @@ const MATERIALS = {
   },
   topsoil_screened_turf: {
     name: 'Topsoil — screened (turf bed)',
+    group: 'topsoil',
     unit: 'tonnes',
     formula: 'area_volume',
     depthM: 0.05,
@@ -61,6 +65,7 @@ const MATERIALS = {
   // ---------- Paving ----------
   paving_concrete_riven: {
     name: 'Paving — riven concrete 450×450',
+    group: 'paving',
     unit: 'slabs',
     formula: 'area_cover',
     coverM2: 0.2025,
@@ -69,6 +74,7 @@ const MATERIALS = {
   },
   paving_sandstone: {
     name: 'Paving — Indian sandstone 600×600',
+    group: 'paving',
     unit: 'slabs',
     formula: 'area_cover',
     coverM2: 0.36,
@@ -77,6 +83,7 @@ const MATERIALS = {
   },
   paving_porcelain: {
     name: 'Paving — vitrified porcelain 600×600',
+    group: 'paving',
     unit: 'slabs',
     formula: 'area_cover',
     coverM2: 0.36,
@@ -87,6 +94,7 @@ const MATERIALS = {
   // ---------- Decking ----------
   decking_softwood: {
     name: 'Decking — treated softwood board 3.6m',
+    group: 'decking',
     unit: 'boards',
     formula: 'area_cover',
     coverM2: 0.522,
@@ -95,6 +103,7 @@ const MATERIALS = {
   },
   decking_composite: {
     name: 'Decking — composite board 3.6m',
+    group: 'decking',
     unit: 'boards',
     formula: 'area_cover',
     coverM2: 0.522,
@@ -103,6 +112,7 @@ const MATERIALS = {
   },
   decking_joist: {
     name: 'Decking joist — treated 47×100 3.6m',
+    group: 'joist',
     unit: 'lengths',
     formula: 'area_cover',
     coverM2: 1.44, // joists at 400mm centres
@@ -112,6 +122,7 @@ const MATERIALS = {
   // ---------- Sub-base and bedding ----------
   sub_base_patio: {
     name: 'MOT Type 1 sub-base (patio, 100mm)',
+    group: 'subbase',
     unit: 'tonnes',
     formula: 'area_volume',
     depthM: 0.1,
@@ -120,6 +131,7 @@ const MATERIALS = {
   },
   sub_base_path: {
     name: 'MOT Type 1 sub-base (path, 80mm)',
+    group: 'subbase',
     unit: 'tonnes',
     formula: 'area_volume',
     depthM: 0.08,
@@ -128,6 +140,7 @@ const MATERIALS = {
   },
   sharp_sand_bedding: {
     name: 'Sharp sand — bedding (40mm)',
+    group: 'bedding',
     unit: 'tonnes',
     formula: 'area_volume',
     depthM: 0.04,
@@ -136,6 +149,7 @@ const MATERIALS = {
   },
   cement_bedding: {
     name: 'Cement — 25kg bag',
+    group: 'cement',
     unit: 'bags',
     formula: 'derived',
     derivedFrom: 'sharp_sand_bedding',
@@ -146,6 +160,7 @@ const MATERIALS = {
   // ---------- Surfaces ----------
   gravel_decorative: {
     name: 'Decorative gravel 20mm (50mm depth)',
+    group: 'surface',
     unit: 'tonnes',
     formula: 'area_volume',
     depthM: 0.05,
@@ -155,6 +170,7 @@ const MATERIALS = {
   },
   bark_mulch: {
     name: 'Bark mulch (50mm depth)',
+    group: 'surface',
     unit: 'tonnes',
     formula: 'area_volume',
     depthM: 0.05,
@@ -164,6 +180,7 @@ const MATERIALS = {
   },
   membrane_weed: {
     name: 'Weed control membrane',
+    group: 'membrane',
     unit: 'm²',
     formula: 'area_cover',
     coverM2: 1,
@@ -171,6 +188,7 @@ const MATERIALS = {
   },
   topsoil_beds: {
     name: 'Topsoil — screened (planting beds, 150mm)',
+    group: 'topsoil',
     unit: 'tonnes',
     formula: 'area_volume',
     depthM: 0.15,
@@ -184,6 +202,7 @@ const MATERIALS = {
   // ---------- Linear: edging, retaining, screening ----------
   sleeper_softwood: {
     name: 'Sleeper — treated softwood 2.4m',
+    group: 'edging',
     unit: 'units',
     formula: 'linear_unit',
     unitLengthM: 2.4,
@@ -191,6 +210,7 @@ const MATERIALS = {
   },
   sleeper_oak: {
     name: 'Sleeper — green oak 2.4m',
+    group: 'edging',
     unit: 'units',
     formula: 'linear_unit',
     unitLengthM: 2.4,
@@ -198,6 +218,7 @@ const MATERIALS = {
   },
   edging_timber: {
     name: 'Timber edging board 3.0m',
+    group: 'edging',
     unit: 'units',
     formula: 'linear_unit',
     unitLengthM: 3.0,
@@ -205,6 +226,7 @@ const MATERIALS = {
   },
   edging_steel: {
     name: 'Steel edging 1.0m',
+    group: 'edging',
     unit: 'units',
     formula: 'linear_unit',
     unitLengthM: 1.0,
@@ -212,6 +234,7 @@ const MATERIALS = {
   },
   fence_panel_lap: {
     name: 'Fence panel — lap 1.83m',
+    group: 'fence_panel',
     unit: 'panels',
     formula: 'linear_unit',
     unitLengthM: 1.83,
@@ -220,14 +243,52 @@ const MATERIALS = {
   },
   fence_panel_slatted: {
     name: 'Fence panel — slatted contemporary 1.8m',
+    group: 'fence_panel',
     unit: 'panels',
     formula: 'linear_unit',
     unitLengthM: 1.8,
     wastePct: 0,
     companions: ['fence_post', 'postmix'],
   },
+  fence_panel_closeboard: {
+    name: 'Fence panel — close board 1.83m',
+    group: 'fence_panel',
+    unit: 'panels',
+    formula: 'linear_unit',
+    unitLengthM: 1.83,
+    wastePct: 0,
+    companions: ['fence_post', 'postmix', 'fence_gravel_board'],
+  },
+  fence_trellis_topped: {
+    name: 'Fence panel — lap with trellis top 1.83m',
+    group: 'fence_panel',
+    unit: 'panels',
+    formula: 'linear_unit',
+    unitLengthM: 1.83,
+    wastePct: 0,
+    companions: ['fence_post', 'postmix'],
+  },
+  fence_gravel_board: {
+    name: 'Gravel board — concrete 1.83m',
+    group: 'fence_extra',
+    unit: 'boards',
+    formula: 'derived',
+    derivedFrom: 'ZONE_PRIMARY',
+    factor: 1,
+    offset: 0,
+  },
+  fence_post_concrete: {
+    name: 'Fence post — concrete slotted 2.4m',
+    group: 'fence_post',
+    unit: 'posts',
+    formula: 'derived',
+    derivedFrom: 'ZONE_PRIMARY',
+    factor: 1,
+    offset: 1,
+  },
   fence_post: {
-    name: 'Fence post — treated 100×100 2.4m',
+    name: 'Fence post — treated timber 100×100 2.4m',
+    group: 'fence_post',
     unit: 'posts',
     formula: 'derived',
     derivedFrom: 'ZONE_PRIMARY',
@@ -236,6 +297,7 @@ const MATERIALS = {
   },
   postmix: {
     name: 'Postmix concrete — 20kg bag',
+    group: 'fixing',
     unit: 'bags',
     formula: 'derived',
     derivedFrom: 'fence_post',
@@ -246,6 +308,7 @@ const MATERIALS = {
   // ---------- Planting ----------
   planting_shrubs: {
     name: 'Shrubs / perennials (3L)',
+    group: 'planting',
     unit: 'plants',
     formula: 'area_cover',
     coverM2: 0.6, // roughly 1 plant per 0.6m² of bed
@@ -253,11 +316,25 @@ const MATERIALS = {
   },
   planting_specimen: {
     name: 'Specimen tree / feature plant',
+    group: 'planting',
     unit: 'plants',
     formula: 'count',
     wastePct: 0,
   },
 };
+
+/**
+ * Groups exist so the picker offers sensible swaps. Choosing what fills the
+ * "post" slot should offer posts, not cement and weed membrane — the picker
+ * used to list all 28 materials flat, which is why "I can choose the panels or
+ * the posts, I can't choose both" was a fair complaint.
+ */
+const HEAD_GROUPS = new Set(['decking', 'edging', 'fence_panel', 'lawn', 'paving', 'planting', 'surface', 'topsoil']);
+
+/** Can this material be the main thing an area of work is made of? */
+function canHeadZone(key) {
+  return HEAD_GROUPS.has(MATERIALS[key]?.group);
+}
 
 /** Materials whose quantity depends on another line, resolved after the first pass. */
 const DERIVED_KEYS = Object.keys(MATERIALS).filter(
@@ -274,4 +351,4 @@ function getMaterial(key) {
   return m;
 }
 
-module.exports = { MATERIALS, DERIVED_KEYS, getMaterial };
+module.exports = { MATERIALS, DERIVED_KEYS, HEAD_GROUPS, canHeadZone, getMaterial };

@@ -49,6 +49,10 @@ const SEED_PRICES = {
   edging_steel: 13.25,
   fence_panel_lap: 29.5,
   fence_panel_slatted: 64.0,
+  fence_panel_closeboard: 42.0,
+  fence_trellis_topped: 38.5,
+  fence_gravel_board: 14.5,
+  fence_post_concrete: 18.75,
   fence_post: 19.5,
   postmix: 6.5,
 

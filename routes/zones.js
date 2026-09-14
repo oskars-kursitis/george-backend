@@ -5,7 +5,8 @@ const router = express.Router();
 const { extractJson } = require('../lib/openai');
 const imageStore = require('../lib/imageStore');
 const { resolvePreset, ROLE_LABEL, ROLE_MEASURE } = require('../config/presets');
-const { MATERIALS } = require('../config/materials');
+const { MATERIALS, canHeadZone } = require('../config/materials');
+const { buildUpFor } = require('../lib/calculator');
 
 /**
  * POST /zones    { photoId, presetId, brief? }
@@ -120,6 +121,13 @@ Rules, and these matter:
           z.materialKey,
         suggested: seen ? Boolean(seen.applies) : true,
         note: seen?.note || '',
+        // The whole chain, not just the head. A fence is panels AND posts AND
+        // postmix; showing only the panel made it look like a choice between
+        // them.
+        buildUp: buildUpFor(
+          (scopeMaterials && MATERIALS[scopeMaterials[z.role]] && scopeMaterials[z.role]) ||
+            z.materialKey
+        ),
       };
     });
 
@@ -127,12 +135,14 @@ Rules, and these matter:
       presetId,
       zones,
       observations: (result.observations || []).slice(0, 5),
-      // So the contractor can correct the material on any zone. George proposes,
-      // he decides.
+      // Every material, tagged so the picker can offer sensible swaps: posts
+      // for a post slot, panels for a panel slot, rather than all 32 flat.
       materialOptions: Object.entries(MATERIALS).map(([key, m]) => ({
         key,
         name: m.name,
         unit: m.unit,
+        group: m.group,
+        canHeadZone: canHeadZone(key),
       })),
       // The app must not let the contractor past this screen without real numbers.
       measurementRequired: true,

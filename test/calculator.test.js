@@ -17,7 +17,7 @@ test('turf area converts to rolls with 5% waste and pulls in its topsoil bed', (
   const q = quantitiesForZone(zone);
 
   // 40m² × 1.05 = 42 rolls
-  assert.equal(q.get('turf_premium'), 42);
+  assert.equal(q.get('turf_standard'), 42);
   // 40m² × 0.05m × 1.5 t/m³ = 3.00 tonnes
   assert.equal(q.get('topsoil_screened_turf'), 3);
 });
@@ -40,8 +40,8 @@ test('fencing derives posts from panels and postmix from posts', () => {
   const zone = zoneFor('contemporary:premium', 'screening', { runM: 18 });
   const q = quantitiesForZone(zone);
 
-  const panels = Math.ceil(18 / 1.8); // 10
-  assert.equal(q.get('fence_panel_slatted'), panels);
+  const panels = Math.ceil(18 / 1.83); // 10
+  assert.equal(q.get('fence_panel_lap'), panels);
   assert.equal(q.get('fence_post'), panels + 1); // 11
   assert.equal(q.get('postmix'), (panels + 1) * 2); // 22
 });
@@ -64,7 +64,7 @@ test('identical materials in two zones aggregate into one line', () => {
     labourLines: [],
   });
 
-  const turf = quote.items.filter((i) => i.materialKey === 'turf_premium');
+  const turf = quote.items.filter((i) => i.materialKey === 'turf_standard');
   assert.equal(turf.length, 1, 'turf should appear once, not once per zone');
   assert.equal(turf[0].qty, 42 + 11); // ceil(40×1.05)=42, ceil(10×1.05)=11
   assert.deepEqual(turf[0].fromZones, ['Back lawn', 'Front lawn']);
@@ -352,4 +352,39 @@ test('a job with no extras is unaffected', () => {
   });
   assert.deepEqual(quote.extras, []);
   assert.equal(quote.totals.extrasTotal, 0);
+});
+
+
+test('the tier no longer chooses materials — it is about finish, not spec', () => {
+  // The tier used to silently swap materials, which meant four things competed
+  // to decide the same question: the brief, the tier, the contractor's choice
+  // and his own catalogue. Materials now come from one place.
+  const value = resolvePreset('family:value').zones.map((z) => z.materialKey);
+  const premium = resolvePreset('family:premium').zones.map((z) => z.materialKey);
+  assert.deepEqual(value, premium);
+});
+
+test('a fence pulls in posts and postmix, so both are quoted not one or the other', () => {
+  const zone = zoneFor('contemporary:value', 'screening', { runM: 18 });
+  const q = quantitiesForZone(zone);
+
+  assert.ok(q.has('fence_panel_lap'), 'panels');
+  assert.ok(q.has('fence_post'), 'posts come with the panels');
+  assert.ok(q.has('postmix'), 'and the postmix for them');
+});
+
+test('close board fencing adds gravel boards on top of posts and postmix', () => {
+  const zone = {
+    role: 'screening',
+    label: 'Boundary',
+    measure: 'linear',
+    materialKey: 'fence_panel_closeboard',
+    runM: 18,
+  };
+  const q = quantitiesForZone(zone);
+
+  const panels = Math.ceil(18 / 1.83);
+  assert.equal(q.get('fence_panel_closeboard'), panels);
+  assert.equal(q.get('fence_gravel_board'), panels);
+  assert.equal(q.get('fence_post'), panels + 1);
 });
