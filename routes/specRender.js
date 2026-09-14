@@ -19,7 +19,8 @@ const { buildPrompt } = require('../config/presets');
  */
 router.post('/', async (req, res, next) => {
   try {
-    const { photoId, presetId, brief, measurements, location = 'back', scope } = req.body;
+    const { photoId, presetId, brief, measurements, location = 'back', scope, referenceImageId } =
+      req.body;
 
     if (!photoId) return res.status(400).json({ error: 'photoId is required (from /concepts).' });
     if (!presetId) return res.status(400).json({ error: 'presetId is required.' });
@@ -46,12 +47,32 @@ router.post('/', async (req, res, next) => {
       approxAreaM2: measuredArea > 0 ? measuredArea : undefined,
       scope,
     });
-    const imageFile = await OpenAI.toFile(original.buffer, 'garden.jpg', { type: original.contentType });
+    const images = [
+      await OpenAI.toFile(original.buffer, 'garden.jpg', { type: original.contentType }),
+    ];
+
+    // The concept the customer actually agreed to, passed as a design
+    // reference. Without it the final render is a fresh roll of the dice and
+    // may not resemble the option they picked.
+    let promptWithReference = prompt;
+    if (referenceImageId) {
+      const reference = imageStore.read(referenceImageId);
+      if (reference) {
+        images.push(
+          await OpenAI.toFile(reference.buffer, 'agreed-design.webp', { type: reference.contentType })
+        );
+        promptWithReference =
+          `${prompt} The SECOND image is the design the customer has already agreed to. ` +
+          'Reproduce that same design — the same layout, materials, planting and detailing — ' +
+          'applied to the first image, corrected to the real dimensions given above. ' +
+          'The first image is the true site; the second is the agreed look.';
+      }
+    }
 
     const result = await getClient().images.edit({
       model: MODELS.SPEC_IMAGE,
-      image: imageFile,
-      prompt,
+      image: images.length > 1 ? images : images[0],
+      prompt: promptWithReference,
       size: '1024x1024',
       quality: 'high',
       output_format: 'png',

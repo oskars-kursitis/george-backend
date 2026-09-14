@@ -117,6 +117,7 @@ app.use('/intake', rateLimit({ name: 'intake', max: 20 }), require('./routes/int
 app.use('/concepts', rateLimit({ name: 'concepts', max: 8 }), require('./routes/concepts'));
 app.use('/zones', rateLimit({ name: 'zones', max: 20 }), require('./routes/zones'));
 app.use('/quote', rateLimit({ name: 'quote', max: 120 }), require('./routes/quote'));
+app.use('/amend', rateLimit({ name: 'amend', max: 20 }), require('./routes/amend'));
 app.use('/spec-render', rateLimit({ name: 'spec', max: 6 }), require('./routes/specRender'));
 app.use('/pdf', rateLimit({ name: 'pdf', max: 30 }), require('./routes/pdf'));
 
