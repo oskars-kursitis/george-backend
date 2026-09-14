@@ -73,11 +73,27 @@ app.get('/health', (req, res) => {
 
 // Generated images. Ids are 128-bit random and expire, so they are unguessable
 // and short-lived; that is the right trade for a prototype.
-app.get('/images/:id', (req, res) => {
-  const image = imageStore.read(req.params.id);
-  if (!image) return res.status(404).json({ error: 'Not found or expired' });
-  res.set({ 'Content-Type': image.contentType, 'Cache-Control': 'private, max-age=3600' });
-  res.send(image.buffer);
+//
+// ?label=Option 2 burns the label into the picture. When three concepts are
+// sent to a customer over WhatsApp the order is not guaranteed, so "I like the
+// second one" is ambiguous unless the image says which one it is.
+app.get('/images/:id', async (req, res, next) => {
+  try {
+    const image = imageStore.read(req.params.id);
+    if (!image) return res.status(404).json({ error: 'Not found or expired' });
+
+    const label = String(req.query.label || '').trim().slice(0, 24);
+    if (!label) {
+      res.set({ 'Content-Type': image.contentType, 'Cache-Control': 'private, max-age=3600' });
+      return res.send(image.buffer);
+    }
+
+    const labelled = await imageStore.withLabel(image.buffer, label);
+    res.set({ 'Content-Type': 'image/jpeg', 'Cache-Control': 'private, max-age=3600' });
+    res.send(labelled);
+  } catch (error) {
+    next(error);
+  }
 });
 
 app.use('/price-list', require('./routes/priceList'));
