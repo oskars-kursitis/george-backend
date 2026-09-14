@@ -388,3 +388,68 @@ test('close board fencing adds gravel boards on top of posts and postmix', () =>
   assert.equal(q.get('fence_gravel_board'), panels);
   assert.equal(q.get('fence_post'), panels + 1);
 });
+
+// --- The render prompt ------------------------------------------------------
+// buildPrompt broke in production when the tier stopped carrying materials and
+// nothing here called it. Every preset now gets exercised.
+
+const { buildPrompt, listPresets, STYLES, TIERS } = require('../config/presets');
+
+test('every preset builds a prompt, in both locations', () => {
+  for (const preset of listPresets()) {
+    for (const location of ['back', 'front']) {
+      const prompt = buildPrompt({
+        presetId: preset.id,
+        brief: 'new fence down the right hand side',
+        location,
+      });
+      assert.ok(prompt.length > 200, `${preset.id} / ${location} produced nothing`);
+      assert.ok(!prompt.includes('undefined'), `${preset.id} / ${location} leaked undefined`);
+    }
+  }
+});
+
+test('a scoped prompt names the material the brief asked for', () => {
+  const prompt = buildPrompt({
+    presetId: 'custom:standard',
+    brief: 'slate chip where the grass is',
+    location: 'back',
+    scope: {
+      roles: ['lawn'],
+      materials: { lawn: 'gravel_decorative' },
+      isFullRedesign: false,
+      worksSummary: 'Replace the grass with decorative aggregate.',
+      leaveUnchanged: ['the existing paving'],
+    },
+  });
+
+  assert.match(prompt, /Build it from: Decorative gravel/);
+  assert.ok(!/Turf/.test(prompt), 'must not mention the turf being ripped out');
+  assert.match(prompt, /NOT a garden makeover/);
+});
+
+test('the tier reaches the render as finish language, not a material', () => {
+  const scope = { roles: ['screening'], isFullRedesign: false, worksSummary: 'Fence.', leaveUnchanged: [] };
+  const value = buildPrompt({ presetId: 'custom:value', location: 'back', scope });
+  const premium = buildPrompt({ presetId: 'custom:premium', location: 'back', scope });
+
+  assert.match(value, /Finish: .*honest/);
+  assert.match(premium, /Finish: .*premium finish/);
+
+  // Same job, same materials — only the finish language differs now.
+  assert.match(value, /Build it from: Fence panel/);
+  assert.match(premium, /Build it from: Fence panel/);
+});
+
+test('measurements reach the prompt once they exist', () => {
+  const prompt = buildPrompt({
+    presetId: 'family:standard',
+    location: 'back',
+    measurements: [
+      { label: 'Back lawn', measure: 'area', lengthM: 8, widthM: 5 },
+      { label: 'Fencing', measure: 'linear', runM: 18 },
+    ],
+  });
+  assert.match(prompt, /back lawn approximately 8m/);
+  assert.match(prompt, /fencing running approximately 18m/);
+});

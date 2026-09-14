@@ -406,8 +406,11 @@ function buildPrompt({ presetId: id, brief, measurements, location = 'back', app
   // Name the materials actually in scope rather than reciting the tier's stock
   // sentence. A fencing job should not be told about sandstone paving.
   const { MATERIALS } = require('./materials');
+  // What the job is actually made of: the brief's choice where it made one,
+  // otherwise the default for that area. The tier no longer has a say — it
+  // describes finish, not specification.
   const specMaterials = roles
-    .map((r) => tier.materials[r])
+    .map((r) => scope?.materials?.[r] || DEFAULT_MATERIALS[r])
     .filter(Boolean)
     .map((key) => MATERIALS[key]?.name)
     .filter(Boolean);

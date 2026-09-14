@@ -3,6 +3,7 @@ const router = express.Router();
 
 const { MATERIALS } = require('../config/materials');
 const { SEED_PRICES } = require('../config/seedPrices');
+const { buildUpFor } = require('../lib/calculator');
 
 /**
  * The price list.
@@ -50,6 +51,31 @@ router.get('/catalogue', (req, res) => {
       seedPrice: SEED_PRICES[key] ?? null,
     })),
   });
+});
+
+/**
+ * GET /price-list/build-up?materialKey=...&sub.<slot>=<key>
+ *
+ * The full chain a material drags in, so the app can show it after the
+ * contractor changes what an area is made of.
+ */
+router.get('/build-up', (req, res, next) => {
+  try {
+    const { materialKey } = req.query;
+    if (!materialKey) return res.status(400).json({ error: 'materialKey is required.' });
+
+    const substitutions = {};
+    for (const [k, v] of Object.entries(req.query)) {
+      if (k.startsWith('sub.') && typeof v === 'string') substitutions[k.slice(4)] = v;
+    }
+
+    res.json({ buildUp: buildUpFor(String(materialKey), { substitutions }) });
+  } catch (error) {
+    if (/Unknown material/.test(error.message)) {
+      return res.status(400).json({ error: error.message });
+    }
+    next(error);
+  }
 });
 
 module.exports = router;
