@@ -5,6 +5,7 @@ const router = express.Router();
 const { extractJson } = require('../lib/openai');
 const imageStore = require('../lib/imageStore');
 const { resolvePreset, ROLE_LABEL, ROLE_MEASURE } = require('../config/presets');
+const { MATERIALS } = require('../config/materials');
 
 /**
  * POST /zones    { photoId, presetId, brief? }
@@ -55,7 +56,7 @@ const ZONES_SCHEMA = {
 
 router.post('/', async (req, res, next) => {
   try {
-    const { photoId, presetId, brief, location = 'back', scopeRoles } = req.body;
+    const { photoId, presetId, brief, location = 'back', scopeRoles, scopeMaterials } = req.body;
 
     if (!photoId) return res.status(400).json({ error: 'photoId is required (from /concepts).' });
     if (!presetId) return res.status(400).json({ error: 'presetId is required.' });
@@ -112,7 +113,11 @@ Rules, and these matter:
         role: z.role,
         label: ROLE_LABEL[z.role],
         measure: ROLE_MEASURE[z.role],
-        materialKey: z.materialKey,
+        // What the BRIEF calls for beats the tier's default. Without this a job
+        // replacing grass with slate was quoted for premium turf.
+        materialKey:
+          (scopeMaterials && MATERIALS[scopeMaterials[z.role]] && scopeMaterials[z.role]) ||
+          z.materialKey,
         suggested: seen ? Boolean(seen.applies) : true,
         note: seen?.note || '',
       };
@@ -122,6 +127,13 @@ Rules, and these matter:
       presetId,
       zones,
       observations: (result.observations || []).slice(0, 5),
+      // So the contractor can correct the material on any zone. George proposes,
+      // he decides.
+      materialOptions: Object.entries(MATERIALS).map(([key, m]) => ({
+        key,
+        name: m.name,
+        unit: m.unit,
+      })),
       // The app must not let the contractor past this screen without real numbers.
       measurementRequired: true,
     });

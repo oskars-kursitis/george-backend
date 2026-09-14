@@ -17,11 +17,11 @@ const { bandForArea } = require('../config/presets');
  */
 router.post('/', (req, res, next) => {
   try {
-    const { presetId, zones, labourLines, hireLines, options } = req.body;
+    const { presetId, zones, labourLines, hireLines, extraLines, options } = req.body;
 
     if (!presetId) return res.status(400).json({ error: 'presetId is required.' });
 
-    const quote = buildQuote({ presetId, zones, labourLines, hireLines, options });
+    const quote = buildQuote({ presetId, zones, labourLines, hireLines, extraLines, options });
 
     // Compare against the band for THIS job's size, not the headline rate. A
     // 22m² job carries the same skip and the same day of set-up as a 100m² one,

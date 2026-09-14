@@ -156,6 +156,14 @@ router.post('/', (req, res, next) => {
     for (const item of quote.items) {
       tableRow(doc, cols(item.name, item.qty, item.unit, money(item.unitPrice), money(item.lineTotal)));
     }
+    // Extras sit with the materials — to the customer a pot is a pot, whether a
+    // formula produced it or the contractor typed it in.
+    for (const extra of quote.extras || []) {
+      tableRow(
+        doc,
+        cols(extra.description, extra.qty, extra.unit, money(extra.rate), money(extra.lineTotal))
+      );
+    }
     rule(doc);
     tableRow(doc, cols('Materials total', '', '', '', money(quote.totals.materialsTotal)), { bold: true });
     doc.moveDown(0.8);

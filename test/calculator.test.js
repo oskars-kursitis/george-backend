@@ -266,3 +266,90 @@ test('implied £/m² is reported so an out-of-band quote is visible', () => {
   assert.ok(quote.totals.impliedPerM2 > 0);
   assert.ok(Number.isFinite(quote.totals.grandTotal));
 });
+
+// --- The escape hatch, and the contractor's own materials -------------------
+// A job replacing grass with slate chip was quoted for premium turf, because
+// the brief reached the render but never reached the materials.
+
+test('custom materials behave exactly like built-in ones', () => {
+  const quote = buildQuote({
+    presetId: 'custom:standard',
+    zones: [
+      {
+        role: 'lawn',
+        label: 'Main area',
+        measure: 'area',
+        materialKey: 'my_slate',
+        lengthM: 6,
+        widthM: 5,
+      },
+    ],
+    labourLines: [],
+    options: {
+      priceBook: { my_slate: 92 },
+      customMaterials: [
+        {
+          key: 'my_slate',
+          name: 'Yorkshire blue slate chip 20mm',
+          unit: 'tonnes',
+          formula: 'area_volume',
+          depthM: 0.05,
+          densityTPerM3: 1.5,
+        },
+      ],
+    },
+  });
+
+  const slate = quote.items.single ?? quote.items[0];
+  assert.equal(quote.items.length, 1, 'a custom material has no companions unless given any');
+  assert.equal(slate.name, 'Yorkshire blue slate chip 20mm');
+  assert.equal(slate.qty, 2.25); // 30m² × 0.05m × 1.5 t/m³
+  assert.equal(slate.unitPrice, 92);
+  assert.equal(slate.isEstimate, false, 'his own price is not an estimate');
+});
+
+test('extras are added even though no formula produced them', () => {
+  const quote = buildQuote({
+    presetId: 'family:value',
+    zones: [zoneFor('family:value', 'lawn', { lengthM: 5, widthM: 4 })],
+    labourLines: [{ description: 'Me', hours: 8, rate: 28 }],
+    extraLines: [
+      { description: 'Weed control membrane', qty: 32, unit: 'm2', rate: 1.1 },
+      { description: 'Glazed pots (large)', qty: 6, unit: 'each', rate: 34 },
+      { description: 'Multipurpose compost 50L', qty: 8, unit: 'bags', rate: 6.5 },
+    ],
+  });
+
+  assert.equal(quote.extras.length, 3);
+  assert.equal(quote.totals.extrasTotal, 32 * 1.1 + 6 * 34 + 8 * 6.5);
+
+  // Extras count as materials — to a customer a pot is a pot.
+  const formulaTotal = quote.items.reduce((sum, i) => sum + i.lineTotal, 0);
+  assert.equal(
+    quote.totals.materialsTotal,
+    Math.round((formulaTotal + quote.totals.extrasTotal) * 100) / 100
+  );
+});
+
+test('an extra with no quantity is refused', () => {
+  assert.throws(
+    () =>
+      buildQuote({
+        presetId: 'family:value',
+        zones: [zoneFor('family:value', 'lawn', { lengthM: 4, widthM: 4 })],
+        labourLines: [],
+        extraLines: [{ description: 'Pots', qty: 0, rate: 34 }],
+      }),
+    /must be more than zero/
+  );
+});
+
+test('a job with no extras is unaffected', () => {
+  const quote = buildQuote({
+    presetId: 'family:value',
+    zones: [zoneFor('family:value', 'lawn', { lengthM: 4, widthM: 4 })],
+    labourLines: [],
+  });
+  assert.deepEqual(quote.extras, []);
+  assert.equal(quote.totals.extrasTotal, 0);
+});
